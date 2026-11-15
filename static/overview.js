@@ -18,6 +18,7 @@
     index: INITIAL_SNAPSHOT,
     busy: false,
     timers: [],
+    hintFrame: 0,
   };
 
   const el = (selector) => document.querySelector(selector);
@@ -27,13 +28,14 @@
     bannerText: el("#banner-text"),
     bannerReset: el("#banner-reset"),
     stats: el("#stats"),
-    alertPlate: el("#alert-plate"),
     watchBody: el("#watch-body"),
     watchMeta: el("#watch-meta"),
-    moves: el("#moves"),
+    watchDate: el("#watch-date"),
+    moves: el("#moves-list"),
     movesMeta: el("#moves-meta"),
-    alerts: el("#alerts"),
+    alerts: el("#alerts-list"),
     alertsMeta: el("#alerts-meta"),
+    alertsCount: el("#alerts-count"),
     collect: el("#collect-now"),
     collectLabel: el("#collect-label"),
     reset: el("#reset-demo"),
@@ -41,9 +43,14 @@
     overlayTitle: el("#collect-title"),
     overlaySteps: el("#collect-steps"),
     overlayBar: el("#collect-bar"),
+    tableWrap: el(".table-wrap"),
+    tableHint: el("#table-hint"),
   };
 
   if (!els.watchBody) return;
+
+  const BELL_ICON =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 6-2.5 8h17c0-2-2.5-2-2.5-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>';
 
   const fmt = (value) => nf.format(value);
   const percent = (from, to) => Math.round((Math.abs(to - from) / from) * 100);
@@ -90,8 +97,12 @@
     return alerts.sort((a, b) => b.below - a.below);
   }
 
-  function stat(value, label, suffix = "") {
-    return `<li><strong class="stats__num">${value}${suffix}</strong><span class="stats__label">${label}</span></li>`;
+  function stat(value, label, hint) {
+    return `<li class="stat">
+      <span class="stat__label">${label}</span>
+      <span class="stat__value">${value}</span>
+      <span class="stat__hint">${hint}</span>
+    </li>`;
   }
 
   function renderTable(snap, prev, alerts) {
@@ -105,9 +116,6 @@
     els.watchBody.innerHTML = demo.products
       .map((product) => {
         const ours = demo.ourPrices[product.id];
-        const prices = demo.competitors.map((c) => snap.prices[product.id][c]);
-        const low = Math.min(...prices);
-        const high = Math.max(...prices);
         const productAlerts = alertsByProduct.get(product.id) || [];
 
         const cells = demo.competitors
@@ -116,7 +124,7 @@
             const prevPrice = prev ? prev.prices[product.id][competitor] : price;
             const diff = price - prevPrice;
             const changed = diff !== 0;
-            const undercut = price < ours;
+            const below = price < ours;
             const delta = changed
               ? ` <span class="delta delta--${diff < 0 ? "down" : "up"}">${
                   diff < 0 ? "▼" : "▲"
@@ -124,47 +132,25 @@
               : "";
             const title = `${competitor}: ${fmt(prevPrice)} → ${fmt(price)} ${demo.currency}`;
             return `<td class="num${changed ? " cell--moved" : ""}${
-              undercut ? " cell--undercut" : ""
+              below ? " cell--below" : ""
             }" title="${title}">${fmt(price)}${delta}</td>`;
           })
           .join("");
 
         const signal = productAlerts.length
-          ? `<span class="signal">${productAlerts.length} below you</span>`
-          : `<span class="signal signal--none">—</span>`;
+          ? '<span class="badge badge--solid">Below you</span>'
+          : '<span class="badge badge--muted">—</span>';
 
         return `<tr id="product-${product.id}" class="watch-row${
-          productAlerts.length ? " is-undercut" : ""
+          productAlerts.length ? " watch-row--alert" : ""
         }">
           <th scope="row"><span class="product-name">${product.name}</span></th>
-          <td class="num num--ours">${fmt(ours)}</td>
+          <td class="num">${fmt(ours)}</td>
           ${cells}
-          <td class="num">${fmt(low)}–${fmt(high)}</td>
           <td class="signal-cell">${signal}</td>
         </tr>`;
       })
       .join("");
-  }
-
-  function renderAlertPlate(alerts) {
-    if (!alerts.length) {
-      els.alertPlate.hidden = true;
-      return;
-    }
-    els.alertPlate.hidden = false;
-    const top = alerts[0];
-    const extra = alerts.length - 1;
-    els.alertPlate.innerHTML = `
-      <div class="alert-plate__main">
-        <span class="stamp alert-plate__stamp">Alert</span>
-        <p class="alert-plate__headline"><strong>${top.competitor}</strong> is <strong>${top.below}% below you</strong> on ${top.product.name}.</p>
-        <p class="alert-plate__sub">${fmt(top.price)} ${demo.currency} against your ${fmt(top.ours)} ${demo.currency}.${
-          extra ? ` Plus ${extra} more below you.` : " One to watch."
-        }</p>
-      </div>
-      <button class="btn btn--paper" type="button" data-inspect="${top.product.id}">
-        Inspect listing <span class="btn__arrow" aria-hidden="true">→</span>
-      </button>`;
   }
 
   function renderMoves(moves) {
@@ -172,15 +158,16 @@
       ? moves
           .map(
             (move) => `<li class="move">
-              <span class="delta delta--${move.direction}">${
-                move.direction === "down" ? "▼" : "▲"
-              } ${move.percent}%</span>
-              <span class="move__text"><strong>${move.competitor}</strong> · ${move.product.name}</span>
-              <span class="move__prices">${fmt(move.from)} → ${fmt(move.to)}</span>
+              <span class="move__text"><b>${move.competitor}</b> · ${move.product.name}</span>
+              <span class="move__delta">
+                <span class="delta delta--${move.direction}">${
+                  move.direction === "down" ? "▼" : "▲"
+                } ${move.percent}%</span>
+              </span>
             </li>`
           )
           .join("")
-      : `<li class="moves__empty">No price moves in this snapshot.</li>`;
+      : '<li class="move"><span class="move__text">No price moves in this snapshot.</span></li>';
   }
 
   function renderAlerts(alerts) {
@@ -188,15 +175,33 @@
       ? alerts
           .map(
             (alert) => `<li class="alert-item">
-              <span class="alert-item__badge">${alert.below}%</span>
-              <span class="alert-item__text">
-                <strong>${alert.competitor}</strong> undercuts you on ${alert.product.name}
-                <span class="alert-item__math">${fmt(alert.price)} vs your ${fmt(alert.ours)} ${demo.currency}</span>
-              </span>
+              <span class="alert-item__icon" aria-hidden="true">${BELL_ICON}</span>
+              <div class="alert-item__body">
+                <p class="alert-item__text"><b>${alert.competitor}</b> is <b>${alert.below}% below you</b> on ${alert.product.name}.</p>
+                <p class="alert-item__meta">${fmt(alert.price)} ${demo.currency} vs your ${fmt(alert.ours)} ${demo.currency}</p>
+                <div class="alert-item__action">
+                  <button class="btn btn--outline btn--sm" type="button" data-inspect="${alert.product.id}">Inspect listing</button>
+                </div>
+              </div>
             </li>`
           )
           .join("")
-      : `<li class="alerts__empty">No competitor is below you. Good day.</li>`;
+      : '<li class="alert-empty">No competitor is below you. Good day.</li>';
+  }
+
+  function updateTableHint() {
+    state.hintFrame = 0;
+    if (!els.tableWrap || !els.tableHint) return;
+    els.tableHint.classList.toggle(
+      "is-visible",
+      els.tableWrap.scrollWidth > els.tableWrap.clientWidth + 1
+    );
+  }
+
+  function scheduleTableHint() {
+    if (!state.hintFrame) {
+      state.hintFrame = requestAnimationFrame(updateTableHint);
+    }
   }
 
   function render() {
@@ -205,22 +210,21 @@
     const moves = computeMoves(snap, prev);
     const alerts = computeAlerts(snap);
     const latest = state.index >= demo.snapshots.length - 1;
-    const pricesCount = demo.products.length * demo.competitors.length;
 
     els.date.textContent = snap.date;
+    els.watchDate.textContent = snap.date;
     els.watchMeta.textContent = `${demo.products.length} products · ${demo.competitors.length} competitors`;
     els.movesMeta.textContent = prev ? `${snap.date} vs ${prev.date}` : snap.date;
     els.alertsMeta.textContent = `${alerts.length} ${alerts.length === 1 ? "alert" : "alerts"}`;
+    els.alertsCount.textContent = String(alerts.length);
 
     els.stats.innerHTML = [
-      stat(demo.products.length, "products"),
-      stat(demo.competitors.length, "competitors"),
-      stat(pricesCount, "prices watched"),
-      stat(moves.length, moves.length === 1 ? "move" : "moves"),
-      stat(alerts.length, alerts.length === 1 ? "alert" : "alerts"),
+      stat(demo.products.length, "Products", "watched daily"),
+      stat(demo.competitors.length, "Competitors", "tracked"),
+      stat(moves.length, moves.length === 1 ? "Move" : "Moves", "vs. previous snapshot"),
+      stat(alerts.length, alerts.length === 1 ? "Alert" : "Alerts", "below your price"),
     ].join("");
 
-    renderAlertPlate(alerts);
     renderTable(snap, prev, alerts);
     renderMoves(moves);
     renderAlerts(alerts);
@@ -235,6 +239,8 @@
     els.collect.disabled = state.busy || latest;
     els.collectLabel.textContent = latest ? "Snapshot collected" : "Collect now";
     els.reset.disabled = state.index === INITIAL_SNAPSHOT;
+
+    scheduleTableHint();
   }
 
   function inspect(productId) {
@@ -244,7 +250,11 @@
     row.classList.remove("is-flash");
     void row.offsetWidth;
     row.classList.add("is-flash");
-    setTimeout(() => row.classList.remove("is-flash"), 1600);
+    setTimeout(() => row.classList.remove("is-flash"), 1200);
+  }
+
+  function closeOverlay() {
+    els.overlay.hidden = true;
   }
 
   function resetDemo() {
@@ -252,7 +262,7 @@
     state.timers = [];
     state.busy = false;
     state.index = INITIAL_SNAPSHOT;
-    els.overlay.hidden = true;
+    closeOverlay();
     render();
   }
 
@@ -262,7 +272,7 @@
     state.busy = true;
     render();
 
-    const steps = [...els.overlaySteps.querySelectorAll("li")];
+    const steps = [...els.overlaySteps.querySelectorAll(".collect-step")];
     steps.forEach((step) => step.classList.remove("is-done"));
     els.overlayBar.style.width = "0%";
     els.overlayTitle.textContent = "Reading the saved pages…";
@@ -283,7 +293,7 @@
         state.timers = [];
         state.index += 1;
         state.busy = false;
-        els.overlay.hidden = true;
+        closeOverlay();
         render();
         els.collect.focus();
       }, stepMs * (steps.length + 1))
@@ -291,14 +301,18 @@
   }
 
   els.overlaySteps.innerHTML = demo.collection.pages
-    .map((page) => `<li>${page}</li>`)
+    .map(
+      (page) =>
+        `<li class="collect-step"><span class="collect-step__dot" aria-hidden="true"></span><span>${page}</span></li>`
+    )
     .join("");
 
   els.collect.addEventListener("click", startCollection);
   els.reset.addEventListener("click", resetDemo);
   els.bannerReset.addEventListener("click", resetDemo);
+  window.addEventListener("resize", scheduleTableHint);
 
-  els.alertPlate.addEventListener("click", (event) => {
+  els.alerts.addEventListener("click", (event) => {
     const button = event.target.closest("[data-inspect]");
     if (button) inspect(button.dataset.inspect);
   });

@@ -8,10 +8,10 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **front-end first.** The landing page and the Overview demo panel are
-> built and run on saved demo data. The product page, history, alerts detail and
-> the FastAPI backend are next. This is a portfolio project, not a production
-> platform.
+> Status: **front-end first.** The Overview demo panel is built in a quiet
+> monochrome workspace style; the landing page is being migrated to the same
+> design code next, followed by the product page, history and the FastAPI
+> backend. This is a portfolio project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -40,12 +40,14 @@ what is missing is a daily, comparable, alerting view of it.
 
 ## Design code
 
-The interface is a black-and-white 1950s cartoon: thick ink outlines, paper grain,
-halftone dots, poster typography and a pair of big eyes as the brand mark. It has
-to stay readable, so the monochrome palette carries meaning through shapes rather
-than colour: price moves are arrows and `+`/`−` signs, alerts are inverted black
-plates. Everything is drawn with CSS and inline SVG — no external fonts, images or
-JS libraries, so the demo also works offline.
+The interface is a quiet monochrome workspace inspired by shadcn/ui: warm paper
+canvas, a near-black sidebar, white cards on 1px hairline borders with barely
+visible elevation, 24px card radii and 18px controls, and compact Inter
+typography. The brand mark is a small monogram — two dots in a rounded square.
+There is no decorative illustration; the product data is the visual. Price moves
+stay readable without colour: arrows and small pills carry the meaning. Inter is
+self-hosted in `static/fonts`, and all UI is plain HTML/CSS/JS — no external CDN,
+React or Tailwind.
 
 ## Demo flow
 
@@ -120,7 +122,7 @@ are untouched.
 dev.sh             start / stop / status for the local demo (port 8767)
 dev_server.py      tiny standard-library static server (replaced by FastAPI)
 templates/         landing page and Overview panel markup
-static/            styles, eye tracking, Overview logic and frozen demo data
+static/            UI theme, Overview styles/logic, self-hosted Inter, demo data
 docs/              product brief, demo script (planned)
 memory/            working memory: handoff, decisions, plain log
 app.py             FastAPI app: watch list, dashboard, API (planned)

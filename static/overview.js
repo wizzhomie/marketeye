@@ -151,7 +151,7 @@
         return `<tr id="product-${product.id}" class="watch-row${
           productAlerts.length ? " watch-row--alert" : ""
         }">
-          <th scope="row"><span class="product-name">${product.name}</span></th>
+          <th scope="row"><a class="product-link" href="/product?id=${product.id}&snapshot=${state.index}">${product.name}</a></th>
           <td class="num">${fmt(ours)}</td>
           ${cells}
           <td class="signal-cell">${signal}</td>
@@ -187,7 +187,7 @@
                 <p class="alert-item__text"><b>${alert.competitor}</b> is <b>${alert.below}% below you</b> on ${alert.product.name}.</p>
                 <p class="alert-item__meta">${fmt(alert.price)} ${demo.currency} vs your ${fmt(alert.ours)} ${demo.currency}</p>
                 <div class="alert-item__action">
-                  <button class="btn btn--outline btn--sm" type="button" data-inspect="${alert.product.id}">Inspect listing</button>
+                  <a class="btn btn--outline btn--sm" href="/product?id=${alert.product.id}&snapshot=${state.index}">Inspect listing</a>
                 </div>
               </div>
             </li>`
@@ -335,16 +335,6 @@
     scheduleTableHint();
   }
 
-  function inspect(productId) {
-    const row = document.querySelector(`#product-${productId}`);
-    if (!row) return;
-    row.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
-    row.classList.remove("is-flash");
-    void row.offsetWidth;
-    row.classList.add("is-flash");
-    setTimeout(() => row.classList.remove("is-flash"), 1200);
-  }
-
   function closeOverlay() {
     els.overlay.hidden = true;
   }
@@ -406,11 +396,6 @@
   els.bannerReset.addEventListener("click", resetDemo);
   els.aiNoteButton.addEventListener("click", requestAiNote);
   window.addEventListener("resize", scheduleTableHint);
-
-  els.alerts.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-inspect]");
-    if (button) inspect(button.dataset.inspect);
-  });
 
   clearAiNote();
   render();

@@ -373,6 +373,16 @@
   margin-left: 5px;
 }
 
+.product-link {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.product-link:hover {
+  border-bottom-color: var(--hairline);
+}
+
 .product-name {
   display: block;
   font-weight: 500;

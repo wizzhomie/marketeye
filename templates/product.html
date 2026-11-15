@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8f2">
+  <title>Product — Market Eye</title>
+  <meta name="description" content="Market Eye demo: two weeks of daily competitor prices for one product, with a history chart, the current spread and the latest snapshots.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141310'/%3E%3Ccircle cx='26' cy='32' r='7' fill='%23faf8f2'/%3E%3Ccircle cx='40' cy='32' r='7' fill='%23faf8f2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/overview.css">
+  <link rel="stylesheet" href="/static/product.css">
+</head>
+<body>
+  <a class="sr-only" href="#main">Skip to content</a>
+
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand brand--light" href="/" aria-label="Market Eye — back to the site">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span class="brand-word">Market Eye</span>
+      </a>
+
+      <p class="nav-label">Workspace</p>
+      <nav class="nav" aria-label="Workspace">
+        <a href="/overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+          Overview
+        </a>
+        <a href="/overview#watch-list">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor" stroke="none"/></svg>
+          Watch list
+        </a>
+        <a href="/overview#alerts">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 6-2.5 8h17c0-2-2.5-2-2.5-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>
+          Alerts
+        </a>
+        <a href="/overview#moves">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+          Snapshots
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p><b>Demo workspace</b>5 products · 3 competitors<br>Saved pages, not live</p>
+        <a class="sidebar-link" href="/">← Back to site</a>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="topbar">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <a href="/overview">Workspace</a> / <a href="/overview">Overview</a> / <b id="crumb-product">Product</b>
+        </nav>
+        <div class="actions">
+          <a class="btn btn--outline" href="/overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+            Back to Overview
+          </a>
+        </div>
+      </div>
+
+      <header class="page-head product-head">
+        <div>
+          <p class="eyebrow">Product · price history</p>
+          <h1 id="product-title">Cement M500 · 50 kg</h1>
+          <p class="sub" id="product-sub">Two weeks of daily competitor prices from the saved pages.</p>
+        </div>
+        <div class="head-meta">
+          <span class="date" id="snapshot-date">15 November 2026</span>
+          <span class="badge badge--outline">Demo data</span>
+        </div>
+      </header>
+
+      <ul class="stats" id="stats" aria-label="Product summary"></ul>
+
+      <div class="product-grid">
+        <section class="card chart-card" aria-labelledby="chart-title">
+          <div class="card-head">
+            <div>
+              <h2 id="chart-title">Price history</h2>
+              <p class="card-sub" id="chart-sub">Last 14 days</p>
+            </div>
+            <span class="badge badge--soft" id="chart-window">14 days</span>
+          </div>
+          <ul class="chart-legend" id="chart-legend" aria-label="Chart series"></ul>
+          <div class="chart" id="chart"></div>
+          <p class="chart-hint" id="chart-hint">Hover the chart to read a day.</p>
+          <div class="sr-only" id="chart-table"></div>
+        </section>
+
+        <div class="side product-side">
+          <section class="card" aria-labelledby="spread-title">
+            <div class="card-head">
+              <div>
+                <h2 id="spread-title">Competitor spread</h2>
+                <p class="card-sub" id="spread-sub">Against your price</p>
+              </div>
+            </div>
+            <ul class="spread" id="spread-list"></ul>
+          </section>
+        </div>
+      </div>
+
+      <section class="card snapshots-card" aria-labelledby="snapshots-title">
+        <div class="card-head">
+          <div>
+            <h2 id="snapshots-title">Latest snapshots</h2>
+            <p class="card-sub" id="snapshots-sub">The last days of this product, one snapshot a day</p>
+          </div>
+          <span class="badge badge--outline" id="snapshots-count">5 days</span>
+        </div>
+        <div class="table-wrap">
+          <table class="watch-table snapshot-table">
+            <caption class="sr-only">Daily prices for this product: your price and each competitor's price</caption>
+            <thead id="snapshots-head"></thead>
+            <tbody id="snapshots-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="note">Demo data · saved pages · no live scraping</p>
+    </main>
+  </div>
+
+  <noscript>
+    <p class="note">The product page needs JavaScript to draw the price history.</p>
+  </noscript>
+
+  <script src="/static/demo-data.js" defer></script>
+  <script src="/static/product.js" defer></script>
+</body>
+</html>

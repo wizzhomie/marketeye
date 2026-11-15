@@ -1,0 +1,320 @@
+/* ==========================================================================
+   Market Eye — Product page
+   History chart, competitor spread and latest snapshots for one product.
+   Built on theme.css + the Overview shell.
+   ========================================================================== */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  min-width: 0;
+}
+
+/* --- legend ------------------------------------------------------------- */
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 14px 20px 2px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.legend-item b {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 0;
+  border-top: 2px solid var(--ink);
+}
+
+.legend-swatch--ours {
+  border-top-width: 2.5px;
+  border-top-style: dashed;
+}
+
+.legend-swatch--c0 {
+  border-top-color: #141310;
+}
+
+.legend-swatch--c1 {
+  border-top-color: #8d8475;
+}
+
+.legend-swatch--c2 {
+  border-top-color: #b3aa98;
+  border-top-style: dotted;
+}
+
+/* --- chart -------------------------------------------------------------- */
+
+.chart {
+  position: relative;
+  padding: 8px 20px 14px;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart text {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  fill: var(--muted);
+}
+
+.chart .chart-grid {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.chart .chart-axis {
+  stroke: var(--hairline);
+  stroke-width: 1;
+}
+
+.chart .series {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart .series-ours {
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-dasharray: 8 5;
+}
+
+.chart .series-c0 {
+  stroke: #141310;
+  stroke-width: 2;
+}
+
+.chart .series-c1 {
+  stroke: #8d8475;
+  stroke-width: 2;
+}
+
+.chart .series-c2 {
+  stroke: #b3aa98;
+  stroke-width: 2;
+  stroke-dasharray: 1 4;
+}
+
+.chart .chart-hover-line {
+  stroke: var(--ink);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.28;
+}
+
+.chart .chart-hover-dot {
+  fill: var(--card);
+  stroke-width: 2;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 3;
+  min-width: 168px;
+  padding: 9px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-size: 11.5px;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -100%);
+  transition: opacity 0.12s ease;
+}
+
+.chart-tooltip.is-visible {
+  opacity: 1;
+}
+
+.chart-tooltip__date {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-soft);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+  color: var(--muted);
+}
+
+.chart-tooltip__row b {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.chart-tooltip__row .legend-swatch {
+  width: 14px;
+  border-top-width: 2px;
+}
+
+.chart-tooltip__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-hint {
+  padding: 0 20px 16px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* --- spread ------------------------------------------------------------- */
+
+.spread {
+  padding: 4px 0 10px;
+}
+
+.spread-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 20px;
+}
+
+.spread-item + .spread-item {
+  border-top: 1px solid var(--hairline);
+}
+
+.spread-item__name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spread-item__name b {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.spread-item__meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.spread-item__price {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.spread-price {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.spread-delta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.spread-item--lowest .spread-item__name b {
+  color: var(--ink);
+}
+
+/* --- latest snapshots --------------------------------------------------- */
+
+.snapshots-card {
+  min-width: 0;
+}
+
+.snapshot-table {
+  min-width: 620px;
+}
+
+.snapshot-table th,
+.snapshot-table td {
+  padding: 11px 20px;
+}
+
+.snapshot-table th:first-child,
+.snapshot-table td:first-child {
+  padding-left: 20px;
+}
+
+.snapshot-table .date-cell {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.snapshot-table tr.is-latest td,
+.snapshot-table tr.is-latest th {
+  background: #fcfaf5;
+}
+
+.snapshot-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* --- responsive --------------------------------------------------------- */
+
+@media (max-width: 1150px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-side {
+    display: block;
+  }
+}
+
+@media (max-width: 560px) {
+  .chart-legend,
+  .chart,
+  .chart-hint,
+  .spread-item,
+  .snapshot-table th,
+  .snapshot-table td {
+    padding-inline: 14px;
+  }
+
+  .snapshot-table th:first-child,
+  .snapshot-table td:first-child {
+    padding-left: 14px;
+  }
+
+  .product-head h1 {
+    font-size: 26px;
+  }
+}

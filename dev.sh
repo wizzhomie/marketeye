@@ -3,8 +3,8 @@
 #
 #   ./dev.sh start | stop | restart | status
 #
-# Serves the static front-end on port 8767 (docflow keeps 8765).
-# No dependencies: the server is plain Python stdlib.
+# Serves the FastAPI app on port 8767 (docflow keeps 8765).
+# Needs the project virtualenv: see "Run it" in README.md.
 
 set -euo pipefail
 
@@ -14,6 +14,7 @@ RUN_DIR="$ROOT/.run"
 PID_FILE="$RUN_DIR/server.pid"
 LOG_FILE="$RUN_DIR/server.log"
 URL="http://127.0.0.1:${PORT}/"
+PYTHON="$ROOT/.venv/bin/python"
 
 mkdir -p "$RUN_DIR"
 
@@ -38,11 +39,16 @@ start() {
     stop >/dev/null 2>&1 || true
   fi
 
+  if [[ ! -x "$PYTHON" ]]; then
+    echo "missing virtualenv: run python3 -m venv .venv && .venv/bin/pip install -r requirements.txt" >&2
+    return 1
+  fi
+
   rm -f "$PID_FILE"
-  nohup python3 "$ROOT/dev_server.py" "$PORT" >>"$LOG_FILE" 2>&1 &
+  nohup "$PYTHON" -m uvicorn app:app --host 0.0.0.0 --port "$PORT" >>"$LOG_FILE" 2>&1 &
   echo $! >"$PID_FILE"
 
-  for _ in $(seq 1 50); do
+  for _ in $(seq 1 100); do
     if is_up; then
       echo "started: $URL (pid $(read_pid), log .run/server.log)"
       return 0

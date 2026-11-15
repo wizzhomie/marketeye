@@ -5,10 +5,10 @@
  * Everything is deterministic and computed in the browser from the fixtures in
  * demo-data.js. Delivery (email or chat) is intentionally not connected yet.
  */
-(() => {
+(async () => {
   "use strict";
 
-  const demo = window.MARKETEYE_DEMO;
+  const demo = await window.MARKETEYE_READY;
   if (!demo) return;
 
   const nf = new Intl.NumberFormat("en-US");

@@ -4,10 +4,10 @@
  * Everything is rendered from the frozen fixtures in demo-data.js, so the
  * backend can later replace the data source without touching the markup.
  */
-(() => {
+(async () => {
   "use strict";
 
-  const demo = window.MARKETEYE_DEMO;
+  const demo = await window.MARKETEYE_READY;
   if (!demo) return;
 
   const INITIAL_SNAPSHOT = 1;

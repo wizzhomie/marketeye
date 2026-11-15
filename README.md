@@ -83,7 +83,7 @@ Without a key the button honestly says AI is not configured and the rest of the
 demo works unchanged. The free Groq tier is enough for a portfolio demo; by
 default it uses `openai/gpt-oss-20b` (another model id can be set in `.env`).
 
-## How it works (planned)
+## How it works
 
 ```text
 watch list (product, competitor, url)
@@ -98,20 +98,30 @@ watch list (product, competitor, url)
    SQLite history ──► dashboard (FastAPI + plain HTML/JS) ──► alerts / digest
 ```
 
-The snapshot adapter is the honest core of the demo: live sites block bots, change
-layouts and need consent, so the demo runs on saved pages and a local fake source.
-A live site is enabled by adding its parser profile and pointing the collector at
-it — the same "profile is data" approach as the first portfolio project.
+Today the SQLite database is rebuilt from `static/demo.json` on every start, and
+FastAPI serves the three panels plus `/api/bootstrap` and the AI note. The panels
+load that payload over the API (with the same JSON as an offline fallback), so the
+front end already talks to the backend it will keep using.
+
+The collector and the snapshot adapter are the honest core still to come: live
+sites block bots, change layouts and need consent, so the demo runs on saved pages
+and a local fake source. A live site is enabled by adding its parser profile and
+pointing the collector at it — the same "profile is data" approach as the first
+portfolio project.
 
 ## Run it
 
-No dependencies yet: a small Python standard-library server serves the landing
-page. The FastAPI app will take over the same port later.
+Python 3.12 + FastAPI + SQLite. The virtualenv is local and gitignored.
 
 ```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 ./dev.sh start     # local site: http://127.0.0.1:8767/, /overview, /product?id=cement, /alerts
 ./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
 ```
+
+The SQLite database (`data/marketeye.db`, gitignored) is rebuilt from the fixtures
+on start, so the demo is deterministic and a broken database is fixed by a restart.
 
 For the optional AI note, copy `.env.example` to `.env` and add a free Groq key.
 The file is gitignored; the demo works without it.
@@ -132,11 +142,13 @@ are untouched.
 
 - Landing page, the Overview demo panel, the product page and the Alerts screen are
   implemented and checked at desktop, tablet and mobile widths.
-- The panels run on frozen fixtures (`static/demo-data.js`, including fifteen days
-  of prices and the alert rules); collection and rule evaluation run in the browser,
-  so the demo is deterministic.
-- Real alert delivery (email/chat), CSV export and the FastAPI backend are not
-  implemented yet. The digest is generated locally and downloaded as a `.txt`.
+- FastAPI + SQLite backend implemented: the database is rebuilt from
+  `static/demo.json` on start and served as `/api/bootstrap`; the panels load it
+  over the API. The AI note stays server-side in `app.py`.
+- Rule evaluation and the digest are computed in the browser for now; moving them
+  to the server is the next backend step. Real alert delivery (email/chat) and CSV
+  export are not implemented yet. The digest is generated locally and downloaded
+  as a `.txt`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
 - Live collection is deliberately not the first step: the demo proves the product
@@ -148,15 +160,15 @@ are untouched.
 
 ```text
 dev.sh             start / stop / status for the local demo (port 8767)
-dev_server.py      tiny standard-library static server (replaced by FastAPI)
+app.py            FastAPI app: pages, /api/bootstrap, product history, AI note
+storage.py         SQLite schema, demo seeding and queries
+ai_note.py         optional Groq buyer note (server-side only)
+requirements.txt   pinned FastAPI + uvicorn
 templates/         landing page, Overview panel, product page and Alerts markup
-static/            UI theme, styles/logic for landing, Overview, product and alerts,
-                   Inter, demo data
+static/            UI theme, styles/logic for the panels, Inter, demo data
+static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              product brief, demo script (planned)
-app.py             FastAPI app: watch list, dashboard, API (planned)
 collector.py       snapshot and HTTP collection (planned)
 parsers/           per-site parser profiles (planned)
-storage.py         SQLite history and queries (planned)
-alerts.py          threshold checks, digest (planned)
-tests/             deterministic fixtures and parser checks (planned)
+tests/             deterministic tests for parsers and rules (planned)
 ```

@@ -6,10 +6,10 @@
  * the Overview watch list or an alert as /product?id=<product>&snapshot=<index>,
  * so it always shows the same day the Overview was showing.
  */
-(() => {
+(async () => {
   "use strict";
 
-  const demo = window.MARKETEYE_DEMO;
+  const demo = await window.MARKETEYE_READY;
   if (!demo) return;
 
   const nf = new Intl.NumberFormat("en-US");

@@ -66,7 +66,7 @@ def _groq_note(api_key: str, model: str, payload: dict) -> tuple[str | None, boo
     body = {
         "model": model,
         "temperature": 0.3,
-        "max_tokens": 200,
+        "max_tokens": 400,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -76,6 +76,8 @@ def _groq_note(api_key: str, model: str, payload: dict) -> tuple[str | None, boo
             },
         ],
     }
+    if model.startswith("openai/gpt-oss"):
+        body["reasoning_effort"] = "low"
     request = urllib.request.Request(
         GROQ_URL,
         data=json.dumps(body).encode("utf-8"),
@@ -83,6 +85,8 @@ def _groq_note(api_key: str, model: str, payload: dict) -> tuple[str | None, boo
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            # Cloudflare in front of Groq rejects the default Python user agent.
+            "User-Agent": "MarketEyeDemo/1.0",
         },
         method="POST",
     )
@@ -91,7 +95,7 @@ def _groq_note(api_key: str, model: str, payload: dict) -> tuple[str | None, boo
             data = json.loads(response.read().decode("utf-8"))
         text = data["choices"][0]["message"]["content"].strip()
         text = text.replace("**", "").replace("__", "").replace("`", "")
-        text = " ".join(text.split())
+        text = " ".join(text.split()).replace(" %", "%")
         if not text:
             return None, False
         return text[:800], True
@@ -177,8 +181,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         Handler.last_ai_call = now
 
-        model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant").strip()
-        note, ok = _groq_note(api_key, model or "llama-3.1-8b-instant", payload)
+        model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b").strip()
+        note, ok = _groq_note(api_key, model or "openai/gpt-oss-20b", payload)
         if not ok:
             self._send_json(
                 502,

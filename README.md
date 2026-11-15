@@ -68,7 +68,8 @@ snapshot. This is the only AI in the product: it explains the data, it never
 fetches prices or invents numbers. The key lives server-side in `.env`
 (`GROQ_API_KEY`, see `.env.example`) and never reaches the browser or git.
 Without a key the button honestly says AI is not configured and the rest of the
-demo works unchanged. The free Groq tier is enough for a portfolio demo.
+demo works unchanged. The free Groq tier is enough for a portfolio demo; by
+default it uses `openai/gpt-oss-20b` (another model id can be set in `.env`).
 
 ## How it works (planned)
 

@@ -13,9 +13,9 @@ competitor.
 > serve the data and evaluate the rules, and the optional AI buyer note is wired to
 > Groq. The live collector reads a public scraping sandbox and a local competitor
 > shop over HTTP, and a daily check runs that pass on a schedule and writes a
-> plain-text digest to disk. The price history exports to CSV from the Overview
-> top bar. Real alert delivery is next. This is a portfolio project, not a
-> production platform.
+> plain-text digest to disk and can send it to Telegram when a bot is connected.
+> The price history exports to CSV from the Overview top bar. This is a portfolio
+> project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -46,7 +46,7 @@ what is missing is a daily, comparable, alerting view of it.
   local competitor shop whose price changes between checks.
 - A **daily check**: the same collection runs once a day in a background loop
   (`./daily.sh`), writes a plain-text digest to `data/digests/YYYY-MM-DD.txt` and
-  shows it on the Live check screen, ready to copy or download.
+  shows it on the Live check screen, ready to copy, download or send to Telegram.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -90,7 +90,8 @@ React or Tailwind.
    local competitor shop moves to its next price after every check.
 9. **Daily check** on the same screen: **Run daily check** fetches both pages,
    stores the readings and writes a plain-text digest; the card shows the last run,
-   the automatic schedule and Copy / Download for the digest.
+   the automatic schedule and Copy / Download for the digest. With a bot connected,
+   **Send to Telegram** delivers it to your chat.
 10. **Reset demo** brings the baseline back, so the demo can be shown again. On the
     live screen it also clears the readings and the saved digests.
 11. The panels state their limits honestly: demo data and saved pages for the
@@ -105,6 +106,24 @@ fetches prices or invents numbers. The key lives server-side in `.env`
 Without a key the button honestly says AI is not configured and the rest of the
 demo works unchanged. The free Groq tier is enough for a portfolio demo; by
 default it uses `openai/gpt-oss-20b` (another model id can be set in `.env`).
+
+## Telegram delivery (optional)
+
+The daily digest can go to Telegram with no paid service. Talk to **@BotFather**,
+create a bot, copy its token into `.env` as `TELEGRAM_BOT_TOKEN`; press **Start**
+in the bot and run
+
+```bash
+.venv/bin/python -c "import telegram; print(telegram.discover_chat_id())"
+```
+
+to get your `TELEGRAM_CHAT_ID` (the id never has to be typed by hand). Both values
+stay server-side; the browser never sees them. When configured, the daily check
+sends the digest automatically and the Live check card gets a **Send to Telegram**
+button; when not configured, delivery is off and the rest of the demo works
+unchanged. It is one message to one chat: no queue, no retries, no email yet.
+`./daily.sh telegram` shows whether delivery is configured, `./daily.sh send`
+sends the latest digest from the console.
 
 ## How it works
 
@@ -142,8 +161,8 @@ source over HTTP, store the reading, advance the demo shop — and writes the di
 to `data/digests/YYYY-MM-DD.txt` while printing it to the log. The Live check
 screen shows the latest digest and can run the same pass on demand with **Run daily
 check**, so the demo does not need a terminal. `./dev.sh start` starts the
-scheduler with the app; `./daily.sh run|start|stop|status|show|log` manages it
-directly. `GET /api/daily` returns the latest digest and the scheduler state,
+scheduler with the app; `./daily.sh run|start|stop|status|show|send|telegram|log`
+manages it directly. `GET /api/daily` returns the latest digest and the scheduler state,
 `POST /api/daily/run` runs one pass for the browser. The CSV export is one more
 GET: `/api/export/history.csv` builds the flat table from SQLite, and the Overview
 top bar is a plain download link to it.
@@ -223,12 +242,14 @@ are untouched.
 - CSV export is implemented as a plain GET: `/api/export/history.csv` builds the
   table from SQLite and the Overview top bar downloads it as
   `marketeye-history-YYYY-MM-DD.csv`. No accounts or background jobs involved.
-- Real alert delivery (email/chat) is not implemented yet. The digest is generated
-  on the server and downloaded from the browser as a `.txt`.
-- Deterministic tests (46) cover the fixtures, the SQLite round trip, the rule
+- Delivery is optional Telegram only: one message to one chat, no queue, no
+  retries, no email channel. Without `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` the
+  product works unchanged and the button stays off; the digest is still saved on
+  disk and downloadable as a `.txt`.
+- Deterministic tests (59) cover the fixtures, the SQLite round trip, the rule
   evaluation, the parser profiles (against a saved real page), the collector, the
-  daily check (digest text, saved files, schedule, an injected pass) and the CSV
-  export:
+  daily check (digest text, saved files, schedule, an injected pass), the CSV
+  export and Telegram delivery (against a local mock server, never the network):
   `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
@@ -260,5 +281,7 @@ templates/         landing, Overview, product, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              product brief, demo script (planned)
-tests/             deterministic tests: fixtures, rules, parser, collector, daily, export
+telegram.py        optional Telegram delivery of the digest (server-side only)
+tests/             deterministic tests: fixtures, rules, parser, collector, daily,
+                   export, telegram
 ```

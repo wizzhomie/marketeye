@@ -29,6 +29,7 @@ import demo_shop
 import export
 import page_parser
 import storage
+import telegram
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "templates"
@@ -303,8 +304,12 @@ def api_live_reset() -> dict:
 
 @app.get("/api/daily")
 def api_daily() -> dict:
-    """The scheduler state and the latest saved digest."""
-    return {"scheduler": daily.scheduler_status(), "latest": daily.latest_digest()}
+    """The scheduler state, the latest saved digest and the delivery channel."""
+    return {
+        "scheduler": daily.scheduler_status(),
+        "latest": daily.latest_digest(),
+        "delivery": telegram.config(),
+    }
 
 
 @app.post("/api/daily/run")
@@ -314,7 +319,9 @@ async def api_daily_run() -> dict:
         return JSONResponse({"detail": "A check is already running."}, status_code=409)
     async with _live_lock:
         try:
-            result = await asyncio.to_thread(daily.run_pass)
+            result = await asyncio.to_thread(
+                daily.run_pass, sender=daily.default_sender()
+            )
         except Exception as exc:  # noqa: BLE001 - report the reason, keep the server up
             return JSONResponse(
                 {"detail": f"The daily check failed: {type(exc).__name__}."},
@@ -323,8 +330,20 @@ async def api_daily_run() -> dict:
     return {
         "scheduler": daily.scheduler_status(),
         "latest": daily.latest_digest(),
+        "delivery": telegram.config(),
         "result": result,
     }
+
+
+@app.post("/api/daily/send")
+async def api_daily_send() -> JSONResponse:
+    """Send the latest saved digest to Telegram (the button on Live check)."""
+    result = await asyncio.to_thread(daily.send_latest)
+    if result.get("sent"):
+        return JSONResponse({"sent": True, "date": result.get("date")}, status_code=200)
+    error = result.get("error") or "Telegram delivery failed."
+    status = {"no_digest": 400, "not_configured": 503}.get(result.get("reason"), 502)
+    return JSONResponse({"detail": error}, status_code=status)
 
 
 @app.get("/api/products/{product_id}/history")

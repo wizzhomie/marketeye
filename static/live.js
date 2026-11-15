@@ -27,6 +27,7 @@
     runDaily: el("#run-daily"),
     copyDaily: el("#copy-daily"),
     downloadDaily: el("#download-daily"),
+    sendDaily: el("#send-daily"),
   };
 
   if (!els.sources || !els.stats) return;
@@ -192,14 +193,17 @@
 
   function syncDailyButtons() {
     const hasDigest = Boolean(state.daily && state.daily.latest);
+    const delivery = (state.daily && state.daily.delivery) || {};
     els.copyDaily.disabled = !hasDigest;
     els.downloadDaily.disabled = !hasDigest;
+    els.sendDaily.disabled = !hasDigest || !delivery.configured;
   }
 
   function renderDaily(data) {
     state.daily = data || null;
     const latest = (data && data.latest) || null;
     const scheduler = (data && data.scheduler) || {};
+    const delivery = (data && data.delivery) || {};
 
     const parts = [latest ? `Last run ${when(latest.generatedAt)}` : "No digest saved yet"];
     parts.push(
@@ -210,6 +214,9 @@
     if (latest && latest.count > 1) {
       parts.push(`${latest.count} digests saved`);
     }
+    parts.push(
+      delivery.configured ? "Telegram connected" : "Telegram not connected"
+    );
     els.dailyMeta.textContent = parts.join(" · ");
 
     els.dailyText.textContent = latest
@@ -235,6 +242,7 @@
     els.collect.disabled = busy;
     els.reset.disabled = busy;
     els.runDaily.disabled = busy;
+    els.sendDaily.disabled = busy;
     syncDailyButtons();
   }
 
@@ -266,6 +274,32 @@
     } finally {
       setBusy(false);
       els.runDaily.textContent = "Run daily check";
+    }
+  }
+
+  async function sendDaily() {
+    if (state.busy || !state.daily || !state.daily.latest) return;
+    setBusy(true);
+    hideBanner();
+    els.sendDaily.textContent = "Sending…";
+    try {
+      const response = await fetch("/api/daily/send", { method: "POST" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || !data.sent) {
+        throw new Error(
+          (data && data.detail) || "Telegram did not accept the digest."
+        );
+      }
+      els.sendDaily.textContent = "Sent";
+    } catch (error) {
+      showBanner(
+        error && error.message ? error.message : "Could not send the digest."
+      );
+    } finally {
+      setBusy(false);
+      window.setTimeout(() => {
+        els.sendDaily.textContent = "Send to Telegram";
+      }, 2000);
     }
   }
 
@@ -376,6 +410,7 @@
   els.runDaily.addEventListener("click", runDaily);
   els.copyDaily.addEventListener("click", copyDaily);
   els.downloadDaily.addEventListener("click", downloadDaily);
+  els.sendDaily.addEventListener("click", sendDaily);
 
   els.copyDaily.disabled = true;
   els.downloadDaily.disabled = true;

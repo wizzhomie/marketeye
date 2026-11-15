@@ -29,6 +29,7 @@ import alerts
 import collector
 import demo_shop
 import storage
+import telegram
 
 ROOT = Path(__file__).resolve().parent
 DIGEST_DIR = ROOT / "data" / "digests"
@@ -236,14 +237,24 @@ def clear_digests(digest_dir: Path | str | None = None) -> int:
 # --- the pass ---------------------------------------------------------------
 
 
+def default_sender() -> Callable[[str], dict] | None:
+    """The configured delivery, or ``None`` when delivery is not set up."""
+    return telegram.send if telegram.config()["configured"] else None
+
+
 def run_pass(
     collect: Callable[[], list[dict]] | None = None,
     now: datetime | None = None,
     digest_dir: Path | str | None = None,
     connection=None,
     advance: Callable[[], int] | None = None,
+    sender: Callable[[str], dict] | None = None,
 ) -> dict:
-    """Fetch every source once, store the readings and save today's digest."""
+    """Fetch every source once, store the readings and save today's digest.
+
+    ``sender`` is optional: when given, the digest text is delivered to it and
+    the outcome lands in ``delivery``. Tests pass no sender, so they stay offline.
+    """
     generated_at = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     readings = (collect or collector.collect_all)()
 
@@ -283,6 +294,8 @@ def run_pass(
     except ValueError:
         relative = path.as_posix()
 
+    delivery = sender(text) if sender is not None else None
+
     return {
         "date": generated_at.astimezone().date().isoformat(),
         "generatedAt": generated_at.isoformat(timespec="seconds"),
@@ -295,10 +308,47 @@ def run_pass(
             1 for entry in entries if entry["reading"]["status"] != "ok"
         ),
         "tick": tick,
+        "delivery": delivery,
     }
 
 
 # --- the loop ---------------------------------------------------------------
+
+
+def send_latest(
+    digest_dir: Path | str | None = None,
+    sender: Callable[[str], dict] | None = None,
+) -> dict:
+    """Send the newest saved digest (the UI's "Send to Telegram" button)."""
+    latest = latest_digest(digest_dir)
+    if latest is None:
+        return {
+            "sent": False,
+            "reason": "no_digest",
+            "error": "No digest saved yet. Run the daily check first.",
+        }
+    sender = sender or default_sender()
+    if sender is None:
+        return {
+            "sent": False,
+            "reason": "not_configured",
+            "error": "Telegram delivery is not configured.",
+        }
+    result = sender(latest["digest"])
+    return {
+        "sent": bool(result.get("sent")),
+        "reason": "sent" if result.get("sent") else "failed",
+        "error": result.get("error"),
+        "date": latest["date"],
+    }
+
+
+def _delivery_line(delivery: dict | None) -> str:
+    if delivery is None:
+        return "[daily] Telegram delivery is not configured (no message sent)"
+    if delivery.get("sent"):
+        return "[daily] digest sent to Telegram"
+    return f"[daily] Telegram delivery failed: {delivery.get('error')}"
 
 
 def loop(interval: float = 30.0) -> None:
@@ -315,13 +365,14 @@ def loop(interval: float = 30.0) -> None:
             today = current.date().isoformat()
             if is_due(current) and attempted_today != today:
                 attempted_today = today
-                result = run_pass()
+                result = run_pass(sender=default_sender())
                 print(
                     f"[daily] {result['generatedAt']}: {result['sources']} sources, "
                     f"{result['read']} read, {result['errors']} errors, "
                     f"digest {result['path']}",
                     flush=True,
                 )
+                print(_delivery_line(result.get("delivery")), flush=True)
                 print(result["digest"], flush=True)
             time.sleep(interval)
         except KeyboardInterrupt:
@@ -334,9 +385,10 @@ def loop(interval: float = 30.0) -> None:
 def main(argv: list[str]) -> int:
     command = argv[1] if len(argv) > 1 else "run"
     if command == "run":
-        result = run_pass()
+        result = run_pass(sender=default_sender())
         print(result["digest"], end="")
         print(f"[daily] saved {result['path']}", flush=True)
+        print(_delivery_line(result.get("delivery")), flush=True)
         return 0
     if command == "loop":
         loop()
@@ -348,6 +400,19 @@ def main(argv: list[str]) -> int:
             return 1
         print(latest["digest"], end="")
         return 0
+    if command == "send":
+        result = send_latest()
+        if result.get("sent"):
+            print(f"sent the {result['date']} digest to Telegram")
+            return 0
+        print(f"not sent: {result.get('error')}", file=sys.stderr)
+        return 1
+    if command == "telegram":
+        status = telegram.config()
+        print(f"channel: telegram, configured: {status['configured']}")
+        print(f"token: {'yes' if status['hasToken'] else 'no'}, chat id: {'yes' if status['hasChat'] else 'no'}")
+        print("send the digest with: ./daily.sh send")
+        return 0 if status["configured"] else 1
     if command == "status":
         status = scheduler_status()
         if status["running"]:
@@ -355,7 +420,7 @@ def main(argv: list[str]) -> int:
         else:
             print(f"not running: daily at {status['at']}")
         return 0 if status["running"] else 1
-    print("usage: daily.py run|loop|show|status", file=sys.stderr)
+    print("usage: daily.py run|loop|show|send|telegram|status", file=sys.stderr)
     return 2
 
 

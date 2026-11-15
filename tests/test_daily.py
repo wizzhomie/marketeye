@@ -244,5 +244,67 @@ class RunPassTests(unittest.TestCase):
         )
 
 
+class DeliveryTests(unittest.TestCase):
+    def setUp(self):
+        self.connection = storage.connect(":memory:")
+        storage.init_db(self.connection)
+        self.addCleanup(self.connection.close)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def test_run_pass_reports_the_delivery(self):
+        sent: list[str] = []
+
+        def sender(text: str) -> dict:
+            sent.append(text)
+            return {"sent": True, "error": None}
+
+        result = daily.run_pass(
+            collect=lambda: [reading(349.0)],
+            now=NOW,
+            digest_dir=self.tmp.name,
+            connection=self.connection,
+            advance=lambda: 1,
+            sender=sender,
+        )
+        self.assertTrue(result["delivery"]["sent"])
+        self.assertEqual(sent, [result["digest"]])
+
+    def test_run_pass_without_a_sender_does_not_deliver(self):
+        result = daily.run_pass(
+            collect=lambda: [reading(349.0)],
+            now=NOW,
+            digest_dir=self.tmp.name,
+            connection=self.connection,
+            advance=lambda: 1,
+        )
+        self.assertIsNone(result["delivery"])
+
+    def test_send_latest_sends_the_saved_digest(self):
+        daily.write_digest("saved digest\n", NOW, self.tmp.name)
+        sent: list[str] = []
+        result = daily.send_latest(
+            digest_dir=self.tmp.name,
+            sender=lambda text: sent.append(text) or {"sent": True, "error": None},
+        )
+        self.assertTrue(result["sent"])
+        self.assertEqual(result["date"], "2026-11-15")
+        self.assertEqual(sent, ["saved digest\n"])
+
+    def test_send_latest_without_a_digest(self):
+        result = daily.send_latest(
+            digest_dir=self.tmp.name, sender=lambda text: {"sent": True}
+        )
+        self.assertEqual(result["reason"], "no_digest")
+        self.assertFalse(result["sent"])
+
+    def test_send_latest_without_delivery_is_honest(self):
+        daily.write_digest("x\n", NOW, self.tmp.name)
+        with mock.patch.object(daily, "default_sender", lambda: None):
+            result = daily.send_latest(digest_dir=self.tmp.name)
+        self.assertEqual(result["reason"], "not_configured")
+        self.assertFalse(result["sent"])
+
+
 if __name__ == "__main__":
     unittest.main()

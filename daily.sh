@@ -6,6 +6,8 @@
 #   ./daily.sh stop     stop the scheduler
 #   ./daily.sh status   is the scheduler running?
 #   ./daily.sh show     print the latest saved digest
+#   ./daily.sh send     send the latest digest to Telegram (if configured)
+#   ./daily.sh telegram is Telegram delivery configured?
 #   ./daily.sh log      last lines of the scheduler log
 #
 # The scheduler checks every 30 seconds whether the configured local time
@@ -110,11 +112,18 @@ case "${1:-status}" in
     fi
     exec "$PYTHON" "$ROOT/daily.py" show
     ;;
+  send|telegram)
+    if [[ ! -x "$PYTHON" ]]; then
+      echo "missing virtualenv" >&2
+      exit 1
+    fi
+    exec "$PYTHON" "$ROOT/daily.py" "$1"
+    ;;
   log)
     [[ -f "$LOG_FILE" ]] && tail -n 40 "$LOG_FILE" || echo "no log yet: .run/daily.log"
     ;;
   *)
-    echo "usage: $0 run|start|stop|restart|status|show|log" >&2
+    echo "usage: $0 run|start|stop|restart|status|show|send|telegram|log" >&2
     exit 2
     ;;
 esac

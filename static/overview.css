@@ -676,7 +676,10 @@
 
 @media (max-width: 1150px) {
   .grid {
-    grid-template-columns: 1fr;
+    /* A single column must still be allowed to shrink: the watch table has a
+       640px min-width inside its own scroll container, and without minmax(0, …)
+       the card pushes the whole page sideways on a phone. */
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .side {

@@ -17,6 +17,23 @@ competitor.
 > The price history exports to CSV from the Overview top bar. This is a portfolio
 > project, not a production platform.
 
+## Screenshots
+
+**Landing** — the pitch, three steps and one sample price day.
+
+![Landing page](docs/screenshots/landing.png)
+
+| **Overview** | **Product page** |
+| --- | --- |
+| ![Overview](docs/screenshots/overview.png) | ![Product page](docs/screenshots/product.png) |
+| **Alerts** | **Live check** |
+| ![Alerts](docs/screenshots/alerts.png) | ![Live check](docs/screenshots/live.png) |
+
+**Mobile** — the Overview shell at 390px; the watch list scrolls sideways inside its
+card instead of pushing the page.
+
+![Overview on mobile](docs/screenshots/overview-mobile.png)
+
 ## The problem, in one paragraph
 
 A small distributor buys and sells a few hundred SKUs. Competitors publish prices
@@ -69,6 +86,9 @@ self-hosted in `static/fonts`, and all UI is plain HTML/CSS/JS — no external C
 React or Tailwind.
 
 ## Demo flow
+
+Полный сценарий показа со словами и запасными ответами — в
+[`docs/demo-script.md`](docs/demo-script.md).
 
 1. Landing page: the problem, three steps, features and one sample price day.
 2. “Watch the demo” → **Overview**: five products × three competitors, current
@@ -280,7 +300,7 @@ requirements.txt   pinned FastAPI + uvicorn
 templates/         landing, Overview, product, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
-docs/              product brief, demo script (planned)
+docs/              demo script (demo-script.md) and screenshots (docs/screenshots/)
 telegram.py        optional Telegram delivery of the digest (server-side only)
 tests/             deterministic tests: fixtures, rules, parser, collector, daily,
                    export, telegram

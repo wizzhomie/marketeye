@@ -124,8 +124,8 @@ are untouched.
   in the browser so the demo is deterministic.
 - Product page, history chart, CSV export, alert delivery and the FastAPI backend
   are not implemented yet.
-- Interface copy is in English (the product's language); the chapter text here and
-  in `memory/` is in Russian for the owner.
+- Interface copy is in English (the product's language); this README is in
+  Russian for the owner.
 - Live collection is deliberately not the first step: the demo proves the product
   mechanics on saved snapshots, then a live adapter is added per site.
 - No accounts, roles or billing; one workspace, one user.
@@ -139,7 +139,6 @@ dev_server.py      tiny standard-library static server (replaced by FastAPI)
 templates/         landing page and Overview panel markup
 static/            UI theme, landing and Overview styles/logic, Inter, demo data
 docs/              product brief, demo script (planned)
-memory/            working memory: handoff, decisions, plain log
 app.py             FastAPI app: watch list, dashboard, API (planned)
 collector.py       snapshot and HTTP collection (planned)
 parsers/           per-site parser profiles (planned)
@@ -147,8 +146,3 @@ storage.py         SQLite history and queries (planned)
 alerts.py          threshold checks, digest (planned)
 tests/             deterministic fixtures and parser checks (planned)
 ```
-
-## Documentation
-
-- Working transfer for the development chat (Russian): [`memory/handoff.md`](memory/handoff.md).
-- Agent rules for this repository: [`AGENTS.md`](AGENTS.md).

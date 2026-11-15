@@ -214,6 +214,33 @@ window.MARKETEYE_DEMO = {
       },
     },
   ],
+  /* Rules behind the Alerts screen. Thresholds and switches are edited in the
+     UI; the values here are the demo defaults. */
+  alertRules: [
+    {
+      id: "below",
+      kind: "below",
+      title: "Below my price",
+      description: "A competitor price is lower than ours.",
+      enabled: true,
+    },
+    {
+      id: "drop",
+      kind: "drop",
+      title: "Price drop",
+      description: "A competitor drops a price day over day.",
+      threshold: 5,
+      enabled: true,
+    },
+    {
+      id: "rise",
+      kind: "rise",
+      title: "Price rise",
+      description: "A competitor raises a price day over day.",
+      threshold: 5,
+      enabled: false,
+    },
+  ],
   collection: {
     pages: [
       "StroyBaza · saved page 1 of 3",

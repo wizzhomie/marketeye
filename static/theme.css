@@ -260,6 +260,16 @@ button {
 }
 
 
+/* --- card head actions --------------------------------------------------- */
+
+.card-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* --- brand -------------------------------------------------------------- */
 
 .brand {

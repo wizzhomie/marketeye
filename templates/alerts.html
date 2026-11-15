@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8f2">
+  <title>Alerts — Market Eye</title>
+  <meta name="description" content="Market Eye demo: alert rules with editable thresholds, the alerts they trigger on today's snapshot and a plain-text daily digest.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141310'/%3E%3Ccircle cx='26' cy='32' r='7' fill='%23faf8f2'/%3E%3Ccircle cx='40' cy='32' r='7' fill='%23faf8f2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/overview.css">
+  <link rel="stylesheet" href="/static/alerts.css">
+</head>
+<body>
+  <a class="sr-only" href="#main">Skip to content</a>
+
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand brand--light" href="/" aria-label="Market Eye — back to the site">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span class="brand-word">Market Eye</span>
+      </a>
+
+      <p class="nav-label">Workspace</p>
+      <nav class="nav" aria-label="Workspace">
+        <a href="/overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+          Overview
+        </a>
+        <a href="/overview#watch-list">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor" stroke="none"/></svg>
+          Watch list
+        </a>
+        <a href="/alerts" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 6-2.5 8h17c0-2-2.5-2-2.5-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>
+          Alerts
+        </a>
+        <a href="/overview#moves">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+          Snapshots
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p><b>Demo workspace</b>5 products · 3 competitors<br>Saved pages, not live</p>
+        <a class="sidebar-link" href="/">← Back to site</a>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="topbar">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <a href="/overview">Workspace</a> / <b>Alerts</b>
+        </nav>
+        <div class="actions">
+          <a class="btn btn--outline" href="/overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+            Back to Overview
+          </a>
+        </div>
+      </div>
+
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Rule desk</p>
+          <h1>Alerts</h1>
+          <p class="sub">Three rules watch the daily snapshot. Whatever they catch becomes one short digest — the message the buyer actually reads.</p>
+        </div>
+        <div class="head-meta">
+          <span class="date" id="snapshot-date">15 November 2026</span>
+          <span class="badge badge--outline">Demo data</span>
+        </div>
+      </header>
+
+      <ul class="stats" id="stats" aria-label="Alert summary"></ul>
+
+      <div class="grid">
+        <div class="alerts-main">
+          <section class="card" aria-labelledby="rules-title">
+            <div class="card-head">
+              <div>
+                <h2 id="rules-title">Alert rules</h2>
+                <p class="card-sub">Switch a rule on or off, change the threshold — the list below follows</p>
+              </div>
+              <span class="badge badge--soft" id="rules-count">2 on</span>
+            </div>
+            <ul class="rules" id="rules-list"></ul>
+          </section>
+
+          <section class="card" aria-labelledby="triggered-title">
+            <div class="card-head">
+              <div>
+                <h2 id="triggered-title">Triggered today</h2>
+                <p class="card-sub" id="triggered-sub">15 November 2026 vs 14 November 2026</p>
+              </div>
+              <span class="badge badge--solid" id="alerts-count">2</span>
+            </div>
+            <ul class="alert-rows" id="alerts-list"></ul>
+          </section>
+        </div>
+
+        <div class="side alerts-side">
+          <section class="card" aria-labelledby="digest-title">
+            <div class="card-head">
+              <div>
+                <h2 id="digest-title">Daily digest</h2>
+                <p class="card-sub">Plain text, generated locally</p>
+              </div>
+              <div class="card-head__actions">
+                <button class="btn btn--outline btn--sm" type="button" id="copy-digest">Copy</button>
+                <button class="btn btn--primary btn--sm" type="button" id="download-digest">Download .txt</button>
+              </div>
+            </div>
+            <pre class="digest" id="digest-text" aria-live="polite"></pre>
+            <p class="digest-note">Delivery isn’t connected in this demo: the digest is generated in the browser, ready to paste into email or chat.</p>
+          </section>
+
+          <section class="card" aria-labelledby="recent-title">
+            <div class="card-head">
+              <div>
+                <h2 id="recent-title">Recent digests</h2>
+                <p class="card-sub" id="recent-sub">Recalculated with the rules above</p>
+              </div>
+            </div>
+            <ul class="recent" id="recent-list"></ul>
+          </section>
+        </div>
+      </div>
+
+      <p class="note">Demo data · saved pages · no live scraping</p>
+    </main>
+  </div>
+
+  <noscript>
+    <p class="note">The alerts screen needs JavaScript to evaluate the rules.</p>
+  </noscript>
+
+  <script src="/static/demo-data.js" defer></script>
+  <script src="/static/alerts.js" defer></script>
+</body>
+</html>

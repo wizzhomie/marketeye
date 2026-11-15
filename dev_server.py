@@ -8,6 +8,7 @@ Routes:
     /                -> templates/index.html
     /overview        -> templates/overview.html
     /product         -> templates/product.html (product id and snapshot in the query)
+    /alerts          -> templates/alerts.html
     /static/...      -> files from static/
     /healthz         -> "ok" (used by dev.sh)
     POST /api/ai/note -> optional Groq-powered buyer note (needs GROQ_API_KEY)
@@ -31,6 +32,7 @@ STATIC_DIR = (ROOT / "static").resolve()
 INDEX = ROOT / "templates" / "index.html"
 OVERVIEW = ROOT / "templates" / "overview.html"
 PRODUCT = ROOT / "templates" / "product.html"
+ALERTS = ROOT / "templates" / "alerts.html"
 DEFAULT_PORT = 8767
 
 MAX_AI_BODY = 32 * 1024
@@ -126,6 +128,10 @@ class Handler(BaseHTTPRequestHandler):
 
         if path in ("/product", "/product/"):
             self._send_file(PRODUCT, "text/html; charset=utf-8")
+            return
+
+        if path in ("/alerts", "/alerts/"):
+            self._send_file(ALERTS, "text/html; charset=utf-8")
             return
 
         if path == "/healthz":

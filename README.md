@@ -8,11 +8,11 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **front-end first.** The landing page, the Overview demo panel and the
-> product page with a two-week price history are built in a quiet monochrome
-> workspace style; an optional AI buyer note is wired to Groq. Alert delivery, CSV
-> export and the FastAPI backend are next. This is a portfolio project, not a
-> production platform.
+> Status: **front-end first.** The landing page, the Overview demo panel, the
+> product page with a two-week price history and the Alerts screen with a plain-text
+> daily digest are built in a quiet monochrome workspace style; an optional AI buyer
+> note is wired to Groq. Real alert delivery, CSV export and the FastAPI backend are
+> next. This is a portfolio project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -33,13 +33,16 @@ what is missing is a daily, comparable, alerting view of it.
 - A **product page** for any product in the watch list: two weeks of daily prices
   in a small line chart (hover a day to read it), the current competitor spread and
   the latest snapshots. It opens on the same day the Overview was showing.
+- An **Alerts** screen: three rules with switches and editable thresholds, the
+  alerts they trigger on the snapshot, and a one-message daily digest in plain text
+  that can be copied or downloaded. Delivery (email or chat) is not connected yet.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
 - A dashboard: current price, change since the previous snapshot, the price history
   chart and the market spread per product (the product page covers this for now).
-- An alert when a price moves beyond a threshold, and a short daily digest
-  (console/file first, Telegram later if requested).
+- An alert when a price moves beyond a threshold, and a short daily digest —
+  shown and downloadable today, delivered to email or chat later.
 - CSV export of the history.
 
 ## Design code
@@ -64,8 +67,11 @@ React or Tailwind.
    next snapshot: prices move, moves and alerts update.
 5. **Draft with AI** asks the model for a short buyer note based only on that
    verified snapshot (optional — needs a Groq key).
-6. **Reset demo** brings the baseline back, so the demo can be shown again.
-7. The panel states its limits honestly: demo data, saved pages, no live scraping.
+6. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
+   threshold and watch the list and the digest follow; copy the digest or download
+   the `.txt`.
+7. **Reset demo** brings the baseline back, so the demo can be shown again.
+8. The panels state their limits honestly: demo data, saved pages, no live scraping.
 
 ## AI buyer note (optional)
 
@@ -103,7 +109,7 @@ No dependencies yet: a small Python standard-library server serves the landing
 page. The FastAPI app will take over the same port later.
 
 ```bash
-./dev.sh start     # local site: http://127.0.0.1:8767/, /overview and /product?id=cement
+./dev.sh start     # local site: http://127.0.0.1:8767/, /overview, /product?id=cement, /alerts
 ./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
 ```
 
@@ -124,11 +130,13 @@ are untouched.
 
 ## Status and limits
 
-- Landing page, the Overview demo panel and the product page are implemented and
-  checked at desktop, tablet and mobile widths.
-- Both panels run on frozen fixtures (`static/demo-data.js`, including fifteen days
-  of prices); collection is simulated in the browser so the demo is deterministic.
-- CSV export, alert delivery and the FastAPI backend are not implemented yet.
+- Landing page, the Overview demo panel, the product page and the Alerts screen are
+  implemented and checked at desktop, tablet and mobile widths.
+- The panels run on frozen fixtures (`static/demo-data.js`, including fifteen days
+  of prices and the alert rules); collection and rule evaluation run in the browser,
+  so the demo is deterministic.
+- Real alert delivery (email/chat), CSV export and the FastAPI backend are not
+  implemented yet. The digest is generated locally and downloaded as a `.txt`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
 - Live collection is deliberately not the first step: the demo proves the product
@@ -141,9 +149,9 @@ are untouched.
 ```text
 dev.sh             start / stop / status for the local demo (port 8767)
 dev_server.py      tiny standard-library static server (replaced by FastAPI)
-templates/         landing page, Overview panel and product page markup
-static/            UI theme, styles/logic for landing, Overview and product, Inter,
-                   demo data
+templates/         landing page, Overview panel, product page and Alerts markup
+static/            UI theme, styles/logic for landing, Overview, product and alerts,
+                   Inter, demo data
 docs/              product brief, demo script (planned)
 app.py             FastAPI app: watch list, dashboard, API (planned)
 collector.py       snapshot and HTTP collection (planned)

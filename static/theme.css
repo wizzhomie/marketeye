@@ -30,24 +30,24 @@
 
 :root {
   /* surfaces */
-  --canvas: #f3efe3;
-  --card: #fffdf5;
-  --surface: #eae3d3;
+  --canvas: #faf8f2;
+  --card: #ffffff;
+  --surface: #f2eee5;
   --sidebar-bg: #141310;
 
   /* text */
   --ink: #141310;
   --ink-soft: #2b2822;
-  --muted: #726c5e;
-  --paper: #f3efe3;
+  --muted: #6f6a5f;
+  --paper: #faf8f2;
 
   /* lines + actions */
-  --hairline: #ded7c5;
-  --sidebar-hairline: rgba(243, 239, 227, 0.15);
+  --hairline: #e9e4d8;
+  --sidebar-hairline: rgba(250, 248, 242, 0.15);
   --primary-bg: #141310;
-  --primary-fg: #f3efe3;
-  --nav-active-bg: rgba(243, 239, 227, 0.12);
-  --nav-hover-bg: rgba(243, 239, 227, 0.07);
+  --primary-fg: #faf8f2;
+  --nav-active-bg: rgba(250, 248, 242, 0.12);
+  --nav-hover-bg: rgba(250, 248, 242, 0.07);
 
   /* shape */
   --radius-card: 24px;
@@ -71,7 +71,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='grain'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23grain)' opacity='0.06'/%3E%3C/svg%3E");
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -173,7 +174,7 @@ button {
 }
 
 .btn:hover {
-  background: #e1d9c7;
+  background: #e8e2d4;
 }
 
 .btn--primary {

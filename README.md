@@ -9,9 +9,9 @@ and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
 > Status: **front-end first.** The landing page and the Overview demo panel are
-> built in a quiet monochrome workspace style. The product page, price history,
-> alert delivery and the FastAPI backend are next. This is a portfolio project,
-> not a production platform.
+> built in a quiet monochrome workspace style; an optional AI buyer note is wired
+> to Groq. The product page, price history, alert delivery and the FastAPI backend
+> are next. This is a portfolio project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -26,9 +26,9 @@ what is missing is a daily, comparable, alerting view of it.
 - A landing page that explains the product: a problem story, three steps, feature
   list and one demo day of the future panel — all in the project's design code.
 - An **Overview** demo panel: watch list with current prices, change badges since
-  the previous snapshot, market spread, undercut highlights, snapshot moves and an
-  alert plate. "Collect now" simulates the next daily snapshot, "Reset demo" makes
-  the show repeatable.
+  the previous snapshot, undercut highlights, snapshot moves, price alerts and an
+  optional AI buyer note. "Collect now" simulates the next daily snapshot, "Reset
+  demo" makes the show repeatable.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -56,8 +56,19 @@ React or Tailwind.
    prices, change since the previous snapshot, spread and a live alert.
 3. **Collect now** simulates the daily collection on saved pages and appends the
    next snapshot: prices move, moves and alerts update.
-4. **Reset demo** brings the baseline back, so the demo can be shown again.
-5. The panel states its limits honestly: demo data, saved pages, no live scraping.
+4. **Draft with AI** asks the model for a short buyer note based only on that
+   verified snapshot (optional — needs a Groq key).
+5. **Reset demo** brings the baseline back, so the demo can be shown again.
+6. The panel states its limits honestly: demo data, saved pages, no live scraping.
+
+## AI buyer note (optional)
+
+The Overview panel can ask Groq to write a short buyer note from the verified
+snapshot. This is the only AI in the product: it explains the data, it never
+fetches prices or invents numbers. The key lives server-side in `.env`
+(`GROQ_API_KEY`, see `.env.example`) and never reaches the browser or git.
+Without a key the button honestly says AI is not configured and the rest of the
+demo works unchanged. The free Groq tier is enough for a portfolio demo.
 
 ## How it works (planned)
 
@@ -88,6 +99,9 @@ page. The FastAPI app will take over the same port later.
 ./dev.sh start     # local site: http://127.0.0.1:8767/ and /overview
 ./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
 ```
+
+For the optional AI note, copy `.env.example` to `.env` and add a free Groq key.
+The file is gitignored; the demo works without it.
 
 DocFlow keeps port 8765; MarketEye uses **8767**.
 

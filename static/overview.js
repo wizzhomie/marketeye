@@ -17,6 +17,7 @@
   const state = {
     index: INITIAL_SNAPSHOT,
     busy: false,
+    aiBusy: false,
     timers: [],
     hintFrame: 0,
   };
@@ -45,9 +46,15 @@
     overlayBar: el("#collect-bar"),
     tableWrap: el(".table-wrap"),
     tableHint: el("#table-hint"),
+    aiNoteButton: el("#ai-note-button"),
+    aiNoteText: el("#ai-note-text"),
+    aiNoteMeta: el("#ai-note-meta"),
   };
 
   if (!els.watchBody) return;
+
+  const AI_PLACEHOLDER =
+    "A short, plain-language note on today's moves — written only from the verified snapshot.";
 
   const BELL_ICON =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 6-2.5 8h17c0-2-2.5-2-2.5-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>';
@@ -204,6 +211,91 @@
     }
   }
 
+  function buildAiPayload() {
+    const snap = snapshot();
+    const prev = previousSnapshot();
+    const moves = computeMoves(snap, prev);
+    const alerts = computeAlerts(snap);
+    return {
+      date: snap.date,
+      currency: demo.currency,
+      ourPrices: demo.products.map((product) => ({
+        product: product.name,
+        price: demo.ourPrices[product.id],
+      })),
+      competitorPrices: demo.products.map((product) => ({
+        product: product.name,
+        prices: snap.prices[product.id],
+      })),
+      moves: moves.map((move) => ({
+        competitor: move.competitor,
+        product: move.product.name,
+        from: move.from,
+        to: move.to,
+        percent: move.percent,
+        direction: move.direction,
+      })),
+      alerts: alerts.map((alert) => ({
+        competitor: alert.competitor,
+        product: alert.product.name,
+        price: alert.price,
+        ourPrice: alert.ours,
+        percentBelow: alert.below,
+      })),
+    };
+  }
+
+  function clearAiNote() {
+    if (!els.aiNoteText) return;
+    els.aiNoteText.textContent = AI_PLACEHOLDER;
+    els.aiNoteText.classList.add("is-placeholder");
+    els.aiNoteMeta.hidden = true;
+    els.aiNoteMeta.textContent = "";
+    els.aiNoteButton.disabled = state.aiBusy;
+    els.aiNoteButton.textContent = "Draft with AI";
+  }
+
+  async function requestAiNote() {
+    if (state.aiBusy || !els.aiNoteButton) return;
+    state.aiBusy = true;
+    els.aiNoteButton.disabled = true;
+    els.aiNoteButton.textContent = "Writing…";
+    els.aiNoteText.classList.remove("is-placeholder");
+    els.aiNoteText.textContent = "Reading today's snapshot…";
+    els.aiNoteMeta.hidden = true;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const response = await fetch("/api/ai/note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildAiPayload()),
+        signal: controller.signal,
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data || typeof data.note !== "string") {
+        throw new Error((data && data.message) || "AI note is unavailable in this demo.");
+      }
+      els.aiNoteText.textContent = data.note;
+      els.aiNoteMeta.textContent = `AI-generated from verified data · ${snapshot().date}`;
+      els.aiNoteMeta.hidden = false;
+    } catch (error) {
+      els.aiNoteText.classList.add("is-placeholder");
+      els.aiNoteText.textContent = "AI note is unavailable in this demo.";
+      els.aiNoteMeta.textContent =
+        error && error.name === "AbortError"
+          ? "The request took too long."
+          : (error && error.message) || "Try again in a moment.";
+      els.aiNoteMeta.hidden = false;
+    } finally {
+      clearTimeout(timeout);
+      state.aiBusy = false;
+      els.aiNoteButton.disabled = false;
+      els.aiNoteButton.textContent = "Draft with AI";
+    }
+  }
+
   function render() {
     const snap = snapshot();
     const prev = previousSnapshot();
@@ -263,6 +355,7 @@
     state.busy = false;
     state.index = INITIAL_SNAPSHOT;
     closeOverlay();
+    clearAiNote();
     render();
   }
 
@@ -270,6 +363,7 @@
     if (state.busy || state.index >= demo.snapshots.length - 1) return;
 
     state.busy = true;
+    clearAiNote();
     render();
 
     const steps = [...els.overlaySteps.querySelectorAll(".collect-step")];
@@ -310,6 +404,7 @@
   els.collect.addEventListener("click", startCollection);
   els.reset.addEventListener("click", resetDemo);
   els.bannerReset.addEventListener("click", resetDemo);
+  els.aiNoteButton.addEventListener("click", requestAiNote);
   window.addEventListener("resize", scheduleTableHint);
 
   els.alerts.addEventListener("click", (event) => {
@@ -317,5 +412,6 @@
     if (button) inspect(button.dataset.inspect);
   });
 
+  clearAiNote();
   render();
 })();

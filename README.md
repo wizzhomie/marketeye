@@ -8,9 +8,9 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **foundation only.** The product is described here; the first working
-> version is built in a separate development chat. This is a portfolio project,
-> not a production platform.
+> Status: **front-end first.** The landing page is built and runs on saved demo
+> data. The dashboard and the FastAPI backend are next. This is a portfolio
+> project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -22,14 +22,25 @@ what is missing is a daily, comparable, alerting view of it.
 
 ## What the first version shows
 
+- A landing page that explains the product: a problem story, three steps, feature
+  list and one demo day of the future panel — all in the project's design code.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
 - A dashboard: current price, change since the previous snapshot, a small price
   history chart, and the market spread per product.
 - An alert when a price moves beyond a threshold, and a short daily digest
-  (Telegram-first, e-mail optional).
+  (console/file first, Telegram later if requested).
 - CSV export of the history.
+
+## Design code
+
+The interface is a black-and-white 1950s cartoon: thick ink outlines, paper grain,
+halftone dots, poster typography and a pair of big eyes as the brand mark. It has
+to stay readable, so the monochrome palette carries meaning through shapes rather
+than colour: price moves are arrows and `+`/`−` signs, alerts are inverted black
+plates. Everything is drawn with CSS and inline SVG — no external fonts, images or
+JS libraries, so the demo also works offline.
 
 ## How it works (planned)
 
@@ -51,27 +62,43 @@ layouts and need consent, so the demo runs on saved pages and a local fake sourc
 A live site is enabled by adding its parser profile and pointing the collector at
 it — the same "profile is data" approach as the first portfolio project.
 
+## Run it
+
+No dependencies yet: a small Python standard-library server serves the landing
+page. The FastAPI app will take over the same port later.
+
+```bash
+./dev.sh start     # http://127.0.0.1:8767/
+./dev.sh status
+./dev.sh stop
+```
+
+DocFlow keeps port 8765; MarketEye uses **8767**.
+
 ## Status and limits
 
-- Nothing is implemented yet; this repository holds the brief and the working
-  memory for the development chat.
+- Landing page implemented and checked at desktop, tablet and mobile widths.
+- Dashboard, storage, collection and alerts are not implemented yet.
 - Live collection is deliberately not the first step: the demo proves the product
   mechanics on saved snapshots, then a live adapter is added per site.
 - No accounts, roles or billing; one workspace, one user.
 - The demo is a portfolio demonstration, not a claim of production readiness.
 
-## Repository layout (planned)
+## Repository layout
 
 ```text
-app.py             FastAPI app: watch list, dashboard, API
-collector.py       snapshot and HTTP collection
-parsers/           per-site parser profiles (selectors as data)
-storage.py         SQLite history and queries
-alerts.py          threshold checks, digest
-templates/         dashboard UI
-tests/             deterministic fixtures and parser checks
-docs/              product brief, demo script
+dev.sh             start / stop / status for the local demo (port 8767)
+dev_server.py      tiny standard-library static server (replaced by FastAPI)
+templates/         landing page markup
+static/            landing styles and the eye-tracking script
+docs/              product brief, demo script (planned)
 memory/            working memory: handoff, decisions, plain log
+app.py             FastAPI app: watch list, dashboard, API (planned)
+collector.py       snapshot and HTTP collection (planned)
+parsers/           per-site parser profiles (planned)
+storage.py         SQLite history and queries (planned)
+alerts.py          threshold checks, digest (planned)
+tests/             deterministic fixtures and parser checks (planned)
 ```
 
 ## Documentation

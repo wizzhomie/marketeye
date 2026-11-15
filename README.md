@@ -228,7 +228,7 @@ time; the scheduler checks every 30 seconds whether its time has come.
 For the optional AI note, copy `.env.example` to `.env` and add a free Groq key.
 The file is gitignored; the demo works without it.
 
-DocFlow keeps port 8765; MarketEye uses **8767**.
+MarketEye listens on port **8767**; the local competitor shop on **8768**.
 
 ## Live demo (tailnet only)
 

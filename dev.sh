@@ -3,7 +3,7 @@
 #
 #   ./dev.sh start | stop | restart | status
 #
-# Serves the FastAPI app on port 8767 (docflow keeps 8765).
+# Serves the FastAPI app on port 8767, away from the owner's other local service.
 # Needs the project virtualenv: see "Run it" in README.md.
 
 set -euo pipefail

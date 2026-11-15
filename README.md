@@ -68,12 +68,21 @@ No dependencies yet: a small Python standard-library server serves the landing
 page. The FastAPI app will take over the same port later.
 
 ```bash
-./dev.sh start     # http://127.0.0.1:8767/
-./dev.sh status
-./dev.sh stop
+./dev.sh start     # local site: http://127.0.0.1:8767/
+./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net
 ```
 
 DocFlow keeps port 8765; MarketEye uses **8767**.
+
+## Live demo (tailnet only)
+
+The landing page is published inside the owner's Tailscale network at
+**<https://marketeye.tail5bc03a.ts.net>**. It is served by a separate userspace
+Tailscale node called `marketeye` that runs from `.run/ts` (gitignored, fetched
+once with `./tunnel.sh setup`) and proxies port 443 to the local dev server.
+Tailnet-only: Funnel is not enabled and the public internet cannot reach it.
+The host's `server` node (DeepSeek Harness GUI) and the old `orbit-site` node
+are untouched.
 
 ## Status and limits
 

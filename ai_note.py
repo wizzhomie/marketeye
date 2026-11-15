@@ -96,3 +96,50 @@ def groq_note(api_key_value: str, model: str, payload: dict) -> tuple[str | None
     except Exception as exc:  # noqa: BLE001 - demo app, report and move on
         sys.stderr.write(f"[ai] Groq request failed: {type(exc).__name__}\n")
         return None, False
+
+
+def chat_json(
+    api_key_value: str,
+    model: str,
+    messages: list[dict],
+    max_tokens: int = 600,
+) -> tuple[dict | None, str | None]:
+    """One JSON-mode chat completion; returns (parsed, error). Never logs the key."""
+    body = {
+        "model": model,
+        "temperature": 0.2,
+        "max_tokens": max_tokens,
+        "messages": messages,
+        "response_format": {"type": "json_object"},
+    }
+    if model.startswith("openai/gpt-oss"):
+        body["reasoning_effort"] = "low"
+    request = urllib.request.Request(
+        GROQ_URL,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key_value}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            # Cloudflare in front of Groq rejects the default Python user agent.
+            "User-Agent": "MarketEyeDemo/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=25) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        content = data["choices"][0]["message"]["content"]
+    except urllib.error.HTTPError as exc:
+        return None, f"the model answered HTTP {exc.code}"
+    except Exception as exc:  # noqa: BLE001 - demo app, report and move on
+        return None, f"the model request failed ({type(exc).__name__})"
+    if not isinstance(content, str) or not content.strip():
+        return None, "the model returned an empty answer"
+    try:
+        parsed = json.loads(content)
+    except ValueError:
+        return None, "the model returned invalid JSON"
+    if not isinstance(parsed, dict):
+        return None, "the model returned an unexpected shape"
+    return parsed, None

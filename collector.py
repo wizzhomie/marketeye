@@ -13,6 +13,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+import discovered
 import page_parser
 
 ROOT = Path(__file__).resolve().parent
@@ -23,7 +24,13 @@ MAX_PAGE_BYTES = 2 * 1024 * 1024
 
 
 def load_sources(path: Path | str = SOURCES_JSON) -> list[dict]:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    """Configured sources, plus pages accepted from the AI discovery step."""
+    sources = json.loads(Path(path).read_text(encoding="utf-8"))
+    known = {source["id"] for source in sources}
+    for source in discovered.sources():
+        if source.get("id") not in known:
+            sources.append(source)
+    return sources
 
 
 def fetch(url: str, timeout: int = TIMEOUT_SECONDS) -> str:

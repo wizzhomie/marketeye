@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -26,6 +27,8 @@ import alerts
 import collector
 import daily
 import demo_shop
+import discover
+import discovered
 import export
 import page_parser
 import storage
@@ -299,6 +302,7 @@ def api_live_reset() -> dict:
         connection.close()
     demo_shop.reset()
     daily.clear_digests()
+    discovered.clear()
     return _live_payload()
 
 
@@ -344,6 +348,80 @@ async def api_daily_send() -> JSONResponse:
     error = result.get("error") or "Telegram delivery failed."
     status = {"no_digest": 400, "not_configured": 503}.get(result.get("reason"), 502)
     return JSONResponse({"detail": error}, status_code=status)
+
+
+@app.post("/api/discover")
+async def api_discover(request: Request) -> JSONResponse:
+    """Ask the model for candidate pages (or verify one pasted URL), then verify."""
+    payload = await _json_body(request)
+    url = str(payload.get("url") or "").strip()
+    product = str(payload.get("product") or "").strip()
+    if not url and not product:
+        return JSONResponse(
+            {"detail": "Give a product name or a page URL."}, status_code=400
+        )
+    if len(product) > 200 or len(url) > 2000:
+        return JSONResponse({"detail": "That input is too long."}, status_code=400)
+
+    if url:
+        if not re.match(r"^https?://", url, re.IGNORECASE):
+            return JSONResponse(
+                {"detail": "The page URL must start with http:// or https://."},
+                status_code=400,
+            )
+        candidate = {"url": url, "competitor": discover.hostname(url), "product": product}
+        verified = await asyncio.to_thread(discover.verify_candidate, candidate)
+        return JSONResponse({"source": "manual", "candidates": [verified]}, status_code=200)
+
+    if not ai_note.api_key():
+        return JSONResponse(
+            {"detail": "AI page search is not configured in this demo."}, status_code=503
+        )
+    now = time.monotonic()
+    if now - _ai_state["last_call"] < AI_MIN_INTERVAL:
+        return JSONResponse({"detail": "Give it a second."}, status_code=429)
+    _ai_state["last_call"] = now
+
+    proposals, error = await asyncio.to_thread(discover.ai_candidates, product)
+    if error:
+        return JSONResponse({"detail": error}, status_code=502)
+    verified = await asyncio.to_thread(discover.verify_all, proposals)
+    return JSONResponse({"source": "ai", "candidates": verified}, status_code=200)
+
+
+@app.post("/api/discover/accept")
+async def api_discover_accept(request: Request) -> JSONResponse:
+    """Re-verify a candidate on the server, then watch it."""
+    payload = await _json_body(request)
+    url = str(payload.get("url") or "").strip()
+    if not re.match(r"^https?://", url, re.IGNORECASE):
+        return JSONResponse(
+            {"detail": "The page URL must start with http:// or https://."},
+            status_code=400,
+        )
+    candidate = {
+        "url": url,
+        "competitor": str(payload.get("competitor") or "").strip(),
+        "product": str(payload.get("product") or "").strip(),
+    }
+    try:
+        accepted = await asyncio.to_thread(discover.accept, candidate)
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    source = accepted["source"]
+    reading = await asyncio.to_thread(
+        collector.collect_source, source, page_parser.load_profiles()
+    )
+    connection = storage.connect()
+    try:
+        storage.add_live_reading(connection, reading)
+    finally:
+        connection.close()
+    return JSONResponse(
+        {"source": source, "profileId": accepted["profileId"], "reading": reading},
+        status_code=200,
+    )
 
 
 @app.get("/api/products/{product_id}/history")

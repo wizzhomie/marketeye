@@ -61,6 +61,9 @@ what is missing is a daily, comparable, alerting view of it.
   stored reading per check, the last move against the previous check and the honest
   error when a page cannot be read. It watches a public scraping sandbox and a
   local competitor shop whose price changes between checks.
+- An **AI-assisted discovery** step on the Live check screen: the model proposes
+  candidate product pages, the server fetches each one and drafts a parser profile
+  only when it can read a single price; you confirm before the page is watched.
 - A **daily check**: the same collection runs once a day in a background loop
   (`./daily.sh`), writes a plain-text digest to `data/digests/YYYY-MM-DD.txt` and
   shows it on the Live check screen, ready to copy, download or send to Telegram.
@@ -112,9 +115,15 @@ React or Tailwind.
    stores the readings and writes a plain-text digest; the card shows the last run,
    the automatic schedule and Copy / Download for the digest. With a bot connected,
    **Send to Telegram** delivers it to your chat.
-10. **Reset demo** brings the baseline back, so the demo can be shown again. On the
-    live screen it also clears the readings and the saved digests.
-11. The panels state their limits honestly: demo data and saved pages for the
+10. **Find a competitor page** (same screen): type a product name — the model
+    proposes a few product-page URLs, the server fetches each one and shows the
+    price it could read (or the honest reason it could not). A pasted page URL
+    skips the model. **Add to watch list** accepts only a page the server read
+    successfully; a "likely" price is the first of several and asks you to check
+    the page. **Reset live demo** forgets accepted pages.
+11. **Reset demo** brings the baseline back, so the demo can be shown again. On the
+    live screen it also clears the readings, the saved digests and accepted pages.
+12. The panels state their limits honestly: demo data and saved pages for the
     panels; the live screen shows exactly which pages were fetched and when.
 
 ## AI buyer note (optional)
@@ -144,6 +153,23 @@ button; when not configured, delivery is off and the rest of the demo works
 unchanged. It is one message to one chat: no queue, no retries, no email yet.
 `./daily.sh telegram` shows whether delivery is configured, `./daily.sh send`
 sends the latest digest from the console.
+
+## AI competitor discovery (optional)
+
+Adding a real page is the fiddly part of this product, so the demo has a small
+honest helper: on Live check, type a product name and the model (the same Groq
+key as the buyer note) proposes up to three public product-page URLs. The model
+only suggests URLs; it never decides what a page says. The server fetches every
+candidate, looks for a single readable price element and drafts a parser profile
+(title selector, price selector, price pattern). A page that cannot be fetched,
+has no price, or has several different prices is shown with that reason and
+cannot be added silently — a "likely" price is the first of several and requires
+your confirmation. A pasted URL skips the model entirely.
+
+Accepted pages are remembered in `data/discovered.json` (gitignored runtime data,
+not repository config), so the tracked parser profiles stay reviewable; **Reset
+live demo** forgets them. There is no paid search API, so the model can propose
+dead or blocked pages — the verification step exists exactly because of that.
 
 ## How it works
 
@@ -185,7 +211,10 @@ scheduler with the app; `./daily.sh run|start|stop|status|show|send|telegram|log
 manages it directly. `GET /api/daily` returns the latest digest and the scheduler state,
 `POST /api/daily/run` runs one pass for the browser. The CSV export is one more
 GET: `/api/export/history.csv` builds the flat table from SQLite, and the Overview
-top bar is a plain download link to it.
+top bar is a plain download link to it. Discovery is two calls:
+`POST /api/discover` (model suggestion or a pasted URL) and
+`POST /api/discover/accept`, which re-fetches the page on the server before it
+writes a profile and a watched source.
 
 What is still missing is the risky, boring part: adapters for sites that block
 bots or change layouts, consent and robots handling, and real alert delivery
@@ -261,14 +290,19 @@ demo, and the host's other tailnet nodes are untouched.
 - CSV export is implemented as a plain GET: `/api/export/history.csv` builds the
   table from SQLite and the Overview top bar downloads it as
   `marketeye-history-YYYY-MM-DD.csv`. No accounts or background jobs involved.
+- Discovery is model-suggested URLs plus server-side verification: the model may
+  propose dead or blocked pages and they are reported as such; pages that are
+  readable get a drafted profile and stay in `data/discovered.json` until the
+  demo reset. No search API, no login-walled sites, no crawl of a whole shop.
 - Delivery is optional Telegram only: one message to one chat, no queue, no
   retries, no email channel. Without `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` the
   product works unchanged and the button stays off; the digest is still saved on
   disk and downloadable as a `.txt`.
-- Deterministic tests (59) cover the fixtures, the SQLite round trip, the rule
+- Deterministic tests (78) cover the fixtures, the SQLite round trip, the rule
   evaluation, the parser profiles (against a saved real page), the collector, the
   daily check (digest text, saved files, schedule, an injected pass), the CSV
-  export and Telegram delivery (against a local mock server, never the network):
+  export, Telegram delivery and page discovery (injected pages and model answers,
+  never the network):
   `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
@@ -292,6 +326,8 @@ collector.py       HTTP fetch + parser profile, one reading per source
 page_parser.py     selector/price extraction; refuses to guess
 demo_shop.py       local "competitor shop" HTTP server with a moving price
 export.py          flat CSV export of the price history
+discover.py        AI page suggestions + server-side page verification
+discovered.py      accepted discovery pages (data/discovered.json)
 parsers/           per-site parser profiles as data (profiles.json)
 live_sources.json  watched URLs with their parser profiles
 ai_note.py         optional Groq buyer note (server-side only)
@@ -302,5 +338,5 @@ static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback
 docs/              demo script (demo-script.md) and screenshots (docs/screenshots/)
 telegram.py        optional Telegram delivery of the digest (server-side only)
 tests/             deterministic tests: fixtures, rules, parser, collector, daily,
-                   export, telegram
+                   export, telegram, discovery
 ```

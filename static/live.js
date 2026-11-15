@@ -10,7 +10,7 @@
 (() => {
   "use strict";
 
-  const state = { busy: false, data: null, daily: null };
+  const state = { busy: false, data: null, daily: null, discoverBusy: false, candidates: [] };
 
   const el = (selector) => document.querySelector(selector);
   const els = {
@@ -28,6 +28,11 @@
     copyDaily: el("#copy-daily"),
     downloadDaily: el("#download-daily"),
     sendDaily: el("#send-daily"),
+    discoverForm: el("#discover-form"),
+    discoverQuery: el("#discover-query"),
+    discoverSubmit: el("#discover-submit"),
+    discoverResults: el("#discover-results"),
+    discoverHint: el("#discover-hint"),
   };
 
   if (!els.sources || !els.stats) return;
@@ -343,6 +348,148 @@
     }
   }
 
+  /* --- finding a competitor page ------------------------------------------ */
+
+  const STATUS_LABEL = {
+    ready: "Price found",
+    likely: "Likely price",
+    no_price: "No price",
+    no_title: "No title",
+    unreachable: "Unreachable",
+  };
+
+  function renderCandidates(candidates) {
+    state.candidates = candidates;
+    if (!candidates.length) {
+      els.discoverResults.innerHTML = "";
+      return;
+    }
+    els.discoverResults.innerHTML = candidates
+      .map((candidate, index) => {
+        const readable = candidate.status === "ready" || candidate.status === "likely";
+        const badge =
+          candidate.status === "ready"
+            ? `<span class="badge badge--solid">${fmt(candidate.price)} ${candidate.currency}</span>`
+            : `<span class="badge badge--outline">${STATUS_LABEL[candidate.status] || "Unreadable"}</span>`;
+        const body = readable
+          ? `<p class="candidate__price">${candidate.raw}</p>${
+              candidate.status === "likely"
+                ? `<p class="candidate__note">${candidate.note}</p>`
+                : ""
+            }`
+          : `<p class="candidate__note">${candidate.note || "This page could not be read safely."}</p>`;
+        const reason = candidate.reason
+          ? `<span class="candidate__why">${candidate.reason}</span>`
+          : "";
+        return `<li class="candidate">
+          <div class="candidate__head">
+            <div>
+              <p class="candidate__competitor">${candidate.competitor}</p>
+              <p class="candidate__title">${candidate.title || candidate.product || "Proposed page"}</p>
+            </div>
+            ${badge}
+          </div>
+          <p class="candidate__url"><a href="${candidate.url}" target="_blank" rel="noopener">${candidate.url}</a></p>
+          ${body}
+          <div class="candidate__foot">
+            <button class="btn btn--outline btn--sm" type="button"
+              data-add="${index}" data-ready="${readable}"${readable ? "" : " disabled"}>Add to watch list</button>
+            ${reason}
+          </div>
+        </li>`;
+      })
+      .join("");
+  }
+
+  function setDiscoverBusy(busy) {
+    state.discoverBusy = busy;
+    els.discoverSubmit.disabled = busy;
+    els.discoverQuery.disabled = busy;
+    els.discoverResults
+      .querySelectorAll("button[data-add]")
+      .forEach((button) => {
+        button.disabled = busy || button.dataset.ready !== "true";
+      });
+  }
+
+  async function findPages(event) {
+    event.preventDefault();
+    if (state.discoverBusy) return;
+    const query = els.discoverQuery.value.trim();
+    if (!query) {
+      els.discoverQuery.focus();
+      return;
+    }
+    setDiscoverBusy(true);
+    hideBanner();
+    els.discoverResults.innerHTML = '<li class="candidate candidate--empty">Checking pages…</li>';
+    els.discoverHint.textContent =
+      "Fetching the proposed pages and reading their prices — this can take a few seconds.";
+    try {
+      const isUrl = /^https?:\/\//i.test(query);
+      const response = await fetch("/api/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isUrl ? { url: query } : { product: query }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error((data && data.detail) || "The page search did not finish.");
+      }
+      renderCandidates(data.candidates || []);
+      els.discoverHint.textContent = data.candidates.length
+        ? "Only a page whose price the server could read can be added. A “likely” price is the first of several — check the page before adding."
+        : "No usable page was found. Try another product name or paste a page URL.";
+    } catch (error) {
+      els.discoverResults.innerHTML = "";
+      showBanner(
+        error && error.message ? error.message : "Could not search for pages."
+      );
+    } finally {
+      setDiscoverBusy(false);
+    }
+  }
+
+  async function addCandidate(index) {
+    const candidate = state.candidates[index];
+    if (!candidate || state.discoverBusy) return;
+    setDiscoverBusy(true);
+    hideBanner();
+    try {
+      const response = await fetch("/api/discover/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: candidate.url,
+          competitor: candidate.competitor,
+          product: candidate.product || candidate.title || "",
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error((data && data.detail) || "The page could not be added.");
+      }
+      const reading = data.reading || {};
+      const result =
+        reading.status === "ok"
+          ? `first reading ${fmt(reading.price)} ${reading.currency}`
+          : "the first check failed — open the source card for the reason";
+      els.discoverHint.textContent = `Added ${data.source.competitor} to the watch list — ${result}.`;
+      els.discoverResults.innerHTML = "";
+      els.discoverQuery.value = "";
+      state.candidates = [];
+      const live = await fetchLive();
+      render(live);
+      showFailures(live);
+    } catch (error) {
+      showBanner(
+        error && error.message ? error.message : "Could not add the page."
+      );
+    } finally {
+      setDiscoverBusy(false);
+    }
+  }
+
   /* --- copy and download -------------------------------------------------- */
 
   function legacyCopy(text) {
@@ -411,6 +558,11 @@
   els.copyDaily.addEventListener("click", copyDaily);
   els.downloadDaily.addEventListener("click", downloadDaily);
   els.sendDaily.addEventListener("click", sendDaily);
+  els.discoverForm.addEventListener("submit", findPages);
+  els.discoverResults.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-add]");
+    if (button) addCandidate(Number(button.dataset.add));
+  });
 
   els.copyDaily.disabled = true;
   els.downloadDaily.disabled = true;

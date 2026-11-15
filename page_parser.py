@@ -15,12 +15,18 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
+import discovered
+
 ROOT = Path(__file__).resolve().parent
 PROFILES_JSON = ROOT / "parsers" / "profiles.json"
 
 
 def load_profiles(path: Path | str = PROFILES_JSON) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    """Tracked profiles, plus profiles drafted when a page was accepted."""
+    profiles = json.loads(Path(path).read_text(encoding="utf-8"))
+    for name, profile in discovered.profiles().items():
+        profiles.setdefault(name, profile)
+    return profiles
 
 
 def _parse_selector(selector: str) -> tuple[str | None, list[str]]:

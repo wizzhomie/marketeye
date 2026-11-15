@@ -201,7 +201,7 @@ Python 3.12 + FastAPI + SQLite. The virtualenv is local and gitignored.
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ./dev.sh start     # http://127.0.0.1:8767/ · /overview · /product?id=cement · /alerts · /live
-./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
+./tunnel.sh start  # optional: publish inside the owner's private Tailscale network
 
 ./daily.sh run     # one daily check now: digest printed and saved
 ./daily.sh start   # scheduler: one check a day at 09:00 (MARKETEYE_DAILY_AT overrides)
@@ -232,13 +232,12 @@ DocFlow keeps port 8765; MarketEye uses **8767**.
 
 ## Live demo (tailnet only)
 
-The landing page is published inside the owner's Tailscale network at
-**<https://marketeye.tail5bc03a.ts.net>**. It is served by a separate userspace
-Tailscale node called `marketeye` that runs from `.run/ts` (gitignored, fetched
-once with `./tunnel.sh setup`) and proxies port 443 to the local dev server.
-Tailnet-only: Funnel is not enabled and the public internet cannot reach it.
-The host's `server` node (DeepSeek Harness GUI) and the old `orbit-site` node
-are untouched.
+For the demo the site is also published inside the owner's **private Tailscale
+network**, served by a separate userspace tailnet node that runs from `.run/ts`
+(gitignored, fetched once with `./tunnel.sh setup`) and proxies port 443 to the
+local dev server. The exact tailnet address is intentionally not part of this
+public repository. Funnel is not enabled: the public internet cannot reach the
+demo, and the host's other tailnet nodes are untouched.
 
 ## Status and limits
 

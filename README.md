@@ -8,10 +8,10 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **front-end first.** The Overview demo panel is built in a quiet
-> monochrome workspace style; the landing page is being migrated to the same
-> design code next, followed by the product page, history and the FastAPI
-> backend. This is a portfolio project, not a production platform.
+> Status: **front-end first.** The landing page and the Overview demo panel are
+> built in a quiet monochrome workspace style. The product page, price history,
+> alert delivery and the FastAPI backend are next. This is a portfolio project,
+> not a production platform.
 
 ## The problem, in one paragraph
 
@@ -122,7 +122,7 @@ are untouched.
 dev.sh             start / stop / status for the local demo (port 8767)
 dev_server.py      tiny standard-library static server (replaced by FastAPI)
 templates/         landing page and Overview panel markup
-static/            UI theme, Overview styles/logic, self-hosted Inter, demo data
+static/            UI theme, landing and Overview styles/logic, Inter, demo data
 docs/              product brief, demo script (planned)
 memory/            working memory: handoff, decisions, plain log
 app.py             FastAPI app: watch list, dashboard, API (planned)

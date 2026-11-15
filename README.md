@@ -35,7 +35,8 @@ what is missing is a daily, comparable, alerting view of it.
   the latest snapshots. It opens on the same day the Overview was showing.
 - An **Alerts** screen: three rules with switches and editable thresholds, the
   alerts they trigger on the snapshot, and a one-message daily digest in plain text
-  that can be copied or downloaded. Delivery (email or chat) is not connected yet.
+  that can be copied or downloaded. Rules are evaluated and stored on the server;
+  delivery (email or chat) is not connected yet.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -99,9 +100,11 @@ watch list (product, competitor, url)
 ```
 
 Today the SQLite database is rebuilt from `static/demo.json` on every start, and
-FastAPI serves the three panels plus `/api/bootstrap` and the AI note. The panels
-load that payload over the API (with the same JSON as an offline fallback), so the
-front end already talks to the backend it will keep using.
+FastAPI serves the three panels, the API and the AI note. The panels load their
+data over the API (with the same JSON as an offline fallback), and the alerts
+screen goes further: rules are saved with `PUT /api/alerts/rules`, while
+`POST /api/alerts/evaluate` returns the matches, stats and the digest. The browser
+only renders what the server decided.
 
 The collector and the snapshot adapter are the honest core still to come: live
 sites block bots, change layouts and need consent, so the demo runs on saved pages
@@ -145,10 +148,13 @@ are untouched.
 - FastAPI + SQLite backend implemented: the database is rebuilt from
   `static/demo.json` on start and served as `/api/bootstrap`; the panels load it
   over the API. The AI note stays server-side in `app.py`.
-- Rule evaluation and the digest are computed in the browser for now; moving them
-  to the server is the next backend step. Real alert delivery (email/chat) and CSV
-  export are not implemented yet. The digest is generated locally and downloaded
-  as a `.txt`.
+- Alert rules are evaluated and stored on the server (`alerts.py`); the browser only
+  renders the result. Saved switches and thresholds survive a page reload and reset
+  when the demo database is rebuilt on restart.
+- Real alert delivery (email/chat) and CSV export are not implemented yet. The
+  digest is generated on the server and downloaded from the browser as a `.txt`.
+- Deterministic tests cover the fixtures, the SQLite round trip and the rule
+  evaluation: `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
 - Live collection is deliberately not the first step: the demo proves the product
@@ -160,8 +166,9 @@ are untouched.
 
 ```text
 dev.sh             start / stop / status for the local demo (port 8767)
-app.py            FastAPI app: pages, /api/bootstrap, product history, AI note
-storage.py         SQLite schema, demo seeding and queries
+app.py            FastAPI app: pages, /api/bootstrap, product history, alerts, AI
+storage.py         SQLite schema, demo seeding, rules and queries
+alerts.py          rule normalisation, matches, digest (server-side only)
 ai_note.py         optional Groq buyer note (server-side only)
 requirements.txt   pinned FastAPI + uvicorn
 templates/         landing page, Overview panel, product page and Alerts markup
@@ -170,5 +177,5 @@ static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback
 docs/              product brief, demo script (planned)
 collector.py       snapshot and HTTP collection (planned)
 parsers/           per-site parser profiles (planned)
-tests/             deterministic tests for parsers and rules (planned)
+tests/             deterministic tests for fixtures and alert rules
 ```

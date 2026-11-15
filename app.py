@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 import ai_note
+import alerts
 import storage
 
 ROOT = Path(__file__).resolve().parent
@@ -114,6 +115,59 @@ def api_products() -> list[dict]:
         }
         for product in payload["products"]
     ]
+
+
+async def _json_body(request: Request) -> dict:
+    """Parse a JSON object body; raise 400 for anything else."""
+    raw = await request.body()
+    if not raw:
+        return {}
+    if len(raw) > MAX_AI_BODY:
+        raise HTTPException(status_code=400, detail="Body is too large.")
+    try:
+        payload = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON.") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Body must be a JSON object.")
+    return payload
+
+
+@app.get("/api/alerts/rules")
+def api_alert_rules() -> dict:
+    """The stored rules (the browser renders them, the server keeps them)."""
+    return {"rules": _bootstrap()["alertRules"]}
+
+
+@app.put("/api/alerts/rules")
+async def api_save_alert_rules(request: Request) -> dict:
+    payload = await _json_body(request)
+    defaults = _bootstrap()["alertRules"]
+    try:
+        rules = alerts.normalize_rules(payload.get("rules"), defaults)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    connection = storage.connect()
+    try:
+        storage.save_alert_rules(connection, rules)
+    finally:
+        connection.close()
+    return {"rules": rules}
+
+
+@app.post("/api/alerts/evaluate")
+async def api_evaluate_alerts(request: Request) -> dict:
+    """Run the rules over one snapshot and return matches, stats and the digest."""
+    payload = await _json_body(request)
+    connection = storage.connect()
+    try:
+        data = storage.bootstrap(connection)
+    finally:
+        connection.close()
+    try:
+        return alerts.evaluate(data, payload.get("rules"), payload.get("snapshot"))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/products/{product_id}/history")

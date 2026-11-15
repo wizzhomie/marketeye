@@ -162,6 +162,16 @@ def seed(connection: sqlite3.Connection, data: dict) -> None:
         )
 
 
+def save_alert_rules(connection: sqlite3.Connection, rules: list[dict]) -> None:
+    """Persist enabled/threshold for known rules (the demo DB lives in data/)."""
+    with connection:
+        for rule in rules:
+            connection.execute(
+                "UPDATE alert_rules SET enabled = ?, threshold = ? WHERE id = ?",
+                (1 if rule["enabled"] else 0, rule.get("threshold"), rule["id"]),
+            )
+
+
 def _history_rows(connection: sqlite3.Connection) -> list[dict]:
     """All daily price records, oldest first."""
     snapshots = list(connection.execute("SELECT id, date FROM snapshots ORDER BY id"))

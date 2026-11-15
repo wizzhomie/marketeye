@@ -2,8 +2,9 @@
  * Alerts screen: rule switches with thresholds, the alerts they trigger on the
  * demo day and the plain-text daily digest.
  *
- * Everything is deterministic and computed in the browser from the fixtures in
- * demo-data.js. Delivery (email or chat) is intentionally not connected yet.
+ * The browser no longer decides anything: rules are saved through
+ * PUT /api/alerts/rules and the matches, stats and digest come from
+ * POST /api/alerts/evaluate. Only the rendering lives here.
  */
 (async () => {
   "use strict";
@@ -13,22 +14,12 @@
 
   const nf = new Intl.NumberFormat("en-US");
   const fmt = (value) => nf.format(value);
-  const pct = (from, to) => ((to - from) / from) * 100;
-  const pctLabel = (from, to) => {
-    const raw = Math.abs(pct(from, to));
-    const rounded = Math.round(raw);
-    return String(rounded === 0 && raw > 0 ? Math.round(raw * 10) / 10 : rounded);
-  };
-  const many = (count, one, few) => `${count} ${count === 1 ? one : few}`;
-
   const TODAY_SNAPSHOT = 1;
-  const today = demo.snapshots[TODAY_SNAPSHOT];
-  const dayIndex = demo.history.findIndex((day) => day.date === today.date);
-  const previous = dayIndex > 0 ? demo.history[dayIndex - 1] : null;
 
   const state = {
     rules: demo.alertRules.map((rule) => ({ ...rule })),
     copyTimer: 0,
+    requestSeq: 0,
   };
 
   const el = (selector) => document.querySelector(selector);
@@ -55,74 +46,7 @@
     rise: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V7"/><path d="M6.5 12.5 12 7l5.5 5.5"/></svg>',
   };
 
-  const ruleLabel = (rule) => {
-    if (rule.kind === "below") return "below my price";
-    const name = rule.kind === "drop" ? "price drop" : "price rise";
-    return `${name} ≥ ${rule.threshold}%`;
-  };
-
   const ruleById = (id) => state.rules.find((rule) => rule.id === id);
-
-  function alertsFor(index) {
-    const day = demo.history[index];
-    const earlier = index > 0 ? demo.history[index - 1] : null;
-    const found = [];
-
-    for (const product of demo.products) {
-      const ours = demo.ourPrices[product.id];
-      for (const competitor of demo.competitors) {
-        const price = day.prices[product.id][competitor];
-        const before = earlier ? earlier.prices[product.id][competitor] : price;
-
-        const below = ruleById("below");
-        if (below && below.enabled && price < ours) {
-          found.push({
-            kind: "below",
-            product,
-            competitor,
-            price,
-            ours,
-            percent: Math.round(((ours - price) / ours) * 100),
-          });
-        }
-
-        const drop = ruleById("drop");
-        if (drop && drop.enabled && earlier && price < before) {
-          const move = Math.abs(pct(before, price));
-          if (move >= drop.threshold) {
-            found.push({
-              kind: "drop",
-              product,
-              competitor,
-              price,
-              from: before,
-              percent: Math.round(move),
-            });
-          }
-        }
-
-        const rise = ruleById("rise");
-        if (rise && rise.enabled && earlier && price > before) {
-          const move = Math.abs(pct(before, price));
-          if (move >= rise.threshold) {
-            found.push({
-              kind: "rise",
-              product,
-              competitor,
-              price,
-              from: before,
-              percent: Math.round(move),
-            });
-          }
-        }
-      }
-    }
-
-    const order = { below: 0, drop: 1, rise: 2 };
-    return found.sort(
-      (a, b) => order[a.kind] - order[b.kind] || (b.percent || 0) - (a.percent || 0)
-    );
-  }
 
   function stat(value, label, hint) {
     return `<li class="stat">
@@ -162,44 +86,40 @@
     els.rulesCount.textContent = `${on} on`;
   }
 
-  function renderStats(alerts) {
-    const products = new Set(alerts.map((alert) => alert.product.id)).size;
-    const on = state.rules.filter((rule) => rule.enabled).length;
-    const digestLines = els.digestText.textContent.trim().split("\n").length;
+  function renderStats(stats) {
     els.stats.innerHTML = [
-      stat(`${on}/${state.rules.length}`, "Rules", "switched on"),
-      stat(alerts.length, "Alerts", "matched today"),
-      stat(products, products === 1 ? "Product" : "Products", "with an alert"),
-      stat(digestLines, "Digest", "lines of plain text"),
+      stat(`${stats.rulesOn}/${stats.rulesTotal}`, "Rules", "switched on"),
+      stat(stats.alerts, "Alerts", "matched today"),
+      stat(stats.products, stats.products === 1 ? "Product" : "Products", "with an alert"),
+      stat(stats.digestLines, "Digest", "lines of plain text"),
     ].join("");
   }
 
-  function renderAlerts(alerts) {
-    els.alertsCount.textContent = String(alerts.length);
+  function renderAlerts(data) {
+    els.alertsCount.textContent = String(data.alerts.length);
 
-    if (!alerts.length) {
+    if (!data.alerts.length) {
       els.alertsList.innerHTML =
         '<li class="alert-empty">No rule matched today. Loosen a threshold or switch a rule on.</li>';
       return;
     }
 
-    els.alertsList.innerHTML = alerts
+    els.alertsList.innerHTML = data.alerts
       .map((alert) => {
         const meta =
           alert.kind === "below"
-            ? `${alert.percent}% below your ${fmt(alert.ours)} ${demo.currency}`
-            : `${fmt(alert.from)} → ${fmt(alert.price)} ${demo.currency} · ${pctLabel(
-                alert.from,
-                alert.price
-              )}% ${alert.kind === "drop" ? "lower" : "higher"} than yesterday`;
+            ? `${alert.percent}% below your ${fmt(alert.ourPrice)} ${demo.currency}`
+            : `${fmt(alert.from)} → ${fmt(alert.price)} ${demo.currency} · ${
+                alert.percentText
+              }% ${alert.kind === "drop" ? "lower" : "higher"} than yesterday`;
         return `<li class="alert-row">
           <span class="alert-row__icon" aria-hidden="true">${ICONS[alert.kind]}</span>
           <div class="alert-row__body">
             <p class="alert-row__text"><b>${alert.competitor}</b> · ${alert.product.name} — <b>${fmt(alert.price)} ${demo.currency}</b></p>
             <p class="alert-row__meta">${meta}</p>
             <div class="alert-row__foot">
-              <span class="badge badge--soft">${ruleById(alert.kind).title}</span>
-              <a class="alert-row__link" href="/product?id=${alert.product.id}&snapshot=${TODAY_SNAPSHOT}">Open product →</a>
+              <span class="badge badge--soft">${alert.ruleTitle}</span>
+              <a class="alert-row__link" href="/product?id=${alert.product.id}&snapshot=${data.snapshotIndex}">Open product →</a>
             </div>
           </div>
         </li>`;
@@ -207,76 +127,81 @@
       .join("");
   }
 
-  function buildDigest(alerts) {
-    const on = state.rules.filter((rule) => rule.enabled);
-    const lines = ["MarketEye · daily digest", `${today.date} · demo data (saved pages)`, ""];
+  function renderRecent(data) {
+    els.recentList.innerHTML =
+      data.recent
+        .map(
+          (row) => `<li class="recent-item">
+            <span class="recent-item__date">${row.date}</span>
+            <span class="recent-item__count">${row.alerts} ${
+              row.alerts === 1 ? "alert" : "alerts"
+            }</span>
+          </li>`
+        )
+        .join("") || '<li class="alert-empty">No earlier snapshots.</li>';
+  }
 
-    if (!alerts.length) {
-      lines.push("No alerts today. Nothing to report.", "");
-    } else {
-      const products = new Set(alerts.map((alert) => alert.product.id)).size;
-      lines.push(
-        `${many(alerts.length, "alert", "alerts")} across ${many(products, "product", "products")}.`,
-        ""
-      );
-      for (const kind of ["below", "drop", "rise"]) {
-        const group = alerts.filter((alert) => alert.kind === kind);
-        if (!group.length) continue;
-        lines.push(ruleById(kind).title);
-        for (const alert of group) {
-          if (kind === "below") {
-            lines.push(
-              `- ${alert.competitor} · ${alert.product.name} — ${fmt(alert.price)} ${demo.currency}, ${alert.percent}% below our ${fmt(alert.ours)} ${demo.currency}`
-            );
-          } else {
-            lines.push(
-              `- ${alert.competitor} · ${alert.product.name} — ${fmt(alert.from)} → ${fmt(alert.price)} ${demo.currency}, ${pctLabel(alert.from, alert.price)}% ${kind === "drop" ? "lower" : "higher"}`
-            );
-          }
-        }
-        lines.push("");
+  function renderData(data) {
+    els.date.textContent = data.date;
+    els.triggeredSub.textContent = `${data.date} vs ${
+      data.previousDate || "no earlier snapshot"
+    }`;
+    els.digestText.textContent = data.digest;
+    renderAlerts(data);
+    renderStats(data.stats);
+    renderRecent(data);
+  }
+
+  function renderError(message) {
+    els.alertsList.innerHTML = `<li class="alert-empty">${message}</li>`;
+    els.digestText.textContent = "The digest could not be loaded from the server.";
+  }
+
+  async function evaluate() {
+    const sequence = ++state.requestSeq;
+    try {
+      const response = await fetch("/api/alerts/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rules: state.rules, snapshot: TODAY_SNAPSHOT }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error(
+          (data && data.detail) || "The server could not evaluate the rules."
+        );
       }
+      if (sequence !== state.requestSeq) return;
+      renderData(data);
+    } catch (error) {
+      if (sequence !== state.requestSeq) return;
+      renderError(error && error.message ? error.message : "Could not reach the server.");
     }
-
-    lines.push(
-      `Rules: ${on.length ? on.map(ruleLabel).join(" · ") : "none switched on"}`,
-      `Snapshot: ${today.date}${previous ? ` vs ${previous.date}` : ""}`,
-      "Demo mode: saved pages, no live scraping. Delivery is not connected.",
-      ""
-    );
-    return lines.join("\n");
   }
 
-  function renderDigest(alerts) {
-    els.digestText.textContent = buildDigest(alerts);
-  }
-
-  function renderRecent() {
-    const rows = [];
-    for (let offset = 0; offset < 3; offset += 1) {
-      const index = dayIndex - offset;
-      if (index < 1) break;
-      const day = demo.history[index];
-      const count = alertsFor(index).length;
-      rows.push(
-        `<li class="recent-item">
-          <span class="recent-item__date">${day.date}</span>
-          <span class="recent-item__count">${count} ${count === 1 ? "alert" : "alerts"}</span>
-        </li>`
-      );
+  async function saveRules() {
+    const response = await fetch("/api/alerts/rules", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rules: state.rules }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error((data && data.detail) || "The server rejected the rules.");
     }
-    els.recentList.innerHTML = rows.join("") || '<li class="alert-empty">No earlier snapshots.</li>';
+    if (data && Array.isArray(data.rules)) {
+      state.rules = data.rules.map((rule) => ({ ...rule }));
+      renderRules();
+    }
   }
 
-  function renderAll() {
-    const alerts = alertsFor(dayIndex);
-    els.date.textContent = today.date;
-    els.triggeredSub.textContent = `${today.date} vs ${previous ? previous.date : "no earlier snapshot"}`;
-    renderRules();
-    renderDigest(alerts);
-    renderAlerts(alerts);
-    renderStats(alerts);
-    renderRecent();
+  async function persistAndEvaluate() {
+    try {
+      await saveRules();
+      await evaluate();
+    } catch (error) {
+      renderError(error && error.message ? error.message : "Could not reach the server.");
+    }
   }
 
   /* --- actions ---------------------------------------------------------- */
@@ -330,7 +255,7 @@
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December",
     ];
-    const [dayNumber, monthName, year] = today.date.split(" ");
+    const [dayNumber, monthName, year] = els.date.textContent.split(" ");
     const month = String(months.indexOf(monthName) + 1).padStart(2, "0");
     return `marketeye-digest-${year}-${month}-${dayNumber.padStart(2, "0")}.txt`;
   }
@@ -353,21 +278,26 @@
     const toggle = event.target.closest("[data-toggle]");
     if (toggle) {
       const rule = ruleById(toggle.dataset.toggle);
+      if (!rule) return;
       rule.enabled = toggle.checked;
-      renderAll();
+      renderRules();
+      persistAndEvaluate();
       return;
     }
     const input = event.target.closest("[data-threshold]");
     if (input) {
       const rule = ruleById(input.dataset.threshold);
+      if (!rule) return;
       const value = Number.parseInt(input.value, 10);
       rule.threshold = Math.min(Math.max(Number.isFinite(value) ? value : 5, 1), 50);
-      renderAll();
+      renderRules();
+      persistAndEvaluate();
     }
   });
 
   els.copyDigest.addEventListener("click", copyDigest);
   els.downloadDigest.addEventListener("click", downloadDigest);
 
-  renderAll();
+  renderRules();
+  evaluate();
 })();

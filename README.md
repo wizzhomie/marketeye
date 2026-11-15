@@ -12,8 +12,9 @@ competitor.
 > product page, the Alerts screen and a live collector are built; FastAPI + SQLite
 > serve the data and evaluate the rules, and the optional AI buyer note is wired to
 > Groq. The live collector reads a public scraping sandbox and a local competitor
-> shop over HTTP. Real alert delivery and CSV export are next. This is a portfolio
-> project, not a production platform.
+> shop over HTTP, and a daily check runs that pass on a schedule and writes a
+> plain-text digest to disk. Real alert delivery and CSV export are next. This is a
+> portfolio project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -42,6 +43,9 @@ what is missing is a daily, comparable, alerting view of it.
   stored reading per check, the last move against the previous check and the honest
   error when a page cannot be read. It watches a public scraping sandbox and a
   local competitor shop whose price changes between checks.
+- A **daily check**: the same collection runs once a day in a background loop
+  (`./daily.sh`), writes a plain-text digest to `data/digests/YYYY-MM-DD.txt` and
+  shows it on the Live check screen, ready to copy or download.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -79,9 +83,13 @@ React or Tailwind.
 7. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
    stores a reading for each and shows the move against the previous check; the
    local competitor shop moves to its next price after every check.
-8. **Reset demo** brings the baseline back, so the demo can be shown again.
-9. The panels state their limits honestly: demo data and saved pages for the
-   panels; the live screen shows exactly which pages were fetched.
+8. **Daily check** on the same screen: **Run daily check** fetches both pages,
+   stores the readings and writes a plain-text digest; the card shows the last run,
+   the automatic schedule and Copy / Download for the digest.
+9. **Reset demo** brings the baseline back, so the demo can be shown again. On the
+   live screen it also clears the readings and the saved digests.
+10. The panels state their limits honestly: demo data and saved pages for the
+    panels; the live screen shows exactly which pages were fetched and when.
 
 ## AI buyer note (optional)
 
@@ -122,11 +130,22 @@ reached, or whose price does not match the profile, is stored as an error with t
 reason — the collector never guesses a price. Readings are not demo fixtures, so
 the seed leaves them alone and a restart keeps what was actually collected.
 
-What is still missing is the boring, risky part: a scheduler that runs the
-checks every day, adapters for sites that block bots or change layouts, consent
-and robots handling, and alert delivery. Adding a real site stays a parser profile
-plus one line in `live_sources.json` — the same "profile is data" approach as the
-first portfolio project.
+The daily check closes the loop between "the pages are watched" and "the buyer
+reads a digest". `./daily.sh` keeps a small loop alive: once a day (09:00 local by
+default, override with `MARKETEYE_DAILY_AT`) it runs one pass — fetch every live
+source over HTTP, store the reading, advance the demo shop — and writes the digest
+to `data/digests/YYYY-MM-DD.txt` while printing it to the log. The Live check
+screen shows the latest digest and can run the same pass on demand with **Run daily
+check**, so the demo does not need a terminal. `./dev.sh start` starts the
+scheduler with the app; `./daily.sh run|start|stop|status|show|log` manages it
+directly. `GET /api/daily` returns the latest digest and the scheduler state,
+`POST /api/daily/run` runs one pass for the browser.
+
+What is still missing is the risky, boring part: adapters for sites that block
+bots or change layouts, consent and robots handling, alert delivery (email or
+chat) and CSV export. Adding a real site stays a parser profile plus one line in
+`live_sources.json` — the same "profile is data" approach as the first portfolio
+project.
 
 ## Run it
 
@@ -137,16 +156,28 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ./dev.sh start     # http://127.0.0.1:8767/ · /overview · /product?id=cement · /alerts · /live
 ./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
+
+./daily.sh run     # one daily check now: digest printed and saved
+./daily.sh start   # scheduler: one check a day at 09:00 (MARKETEYE_DAILY_AT overrides)
+./daily.sh status  # is the scheduler running?
+./daily.sh show    # print the latest saved digest
 ```
 
 The SQLite database (`data/marketeye.db`, gitignored) is rebuilt from the fixtures
 on start, so the demo is deterministic and a broken database is fixed by a restart.
-Live readings are kept across restarts; **Reset live demo** clears them.
+Live readings are kept across restarts; **Reset live demo** clears them and the
+saved digests. `data/digests/` is gitignored too: digests are runtime artifacts,
+not demo fixtures.
 
 The app also starts the local competitor shop on **127.0.0.1:8768** and proxies a
 readable copy at `/demo-shop`; the collector watches it over HTTP like any other
 site. Watched URLs live in `live_sources.json` and a new site is a parser profile
 in `parsers/profiles.json`.
+
+`./dev.sh start` starts the daily scheduler next to the web app, so a fresh demo
+has both `http://127.0.0.1:8767/` and one automatic check a day. `./dev.sh stop`
+stops both. Use `MARKETEYE_DAILY_AT=07:30 ./daily.sh start` for a different local
+time; the scheduler checks every 30 seconds whether its time has come.
 
 For the optional AI note, copy `.env.example` to `.env` and add a free Groq key.
 The file is gitignored; the demo works without it.
@@ -176,12 +207,17 @@ are untouched.
 - Live collection is implemented for two honest sources: `books.toscrape.com` (a
   public scraping sandbox whose price does not move) and a local competitor shop
   served by the app on port 8768 (its price changes after every check). No real
-  retailer is scraped, and there is no scheduler yet: checks run when you press
-  **Collect now**.
+  retailer is scraped.
+- The daily check is real but small: `daily.py` runs one collection pass, stores
+  the readings and writes `data/digests/YYYY-MM-DD.txt`; `./daily.sh` keeps the
+  loop alive (once a day at 09:00 local by default), `./dev.sh start` starts it
+  with the app, and the Live check screen can run the same pass on demand. There
+  are no retries or catch-up runs after downtime: a missed day stays missed.
 - Real alert delivery (email/chat) and CSV export are not implemented yet. The
   digest is generated on the server and downloaded from the browser as a `.txt`.
-- Deterministic tests (22) cover the fixtures, the SQLite round trip, the rule
-  evaluation, the parser profiles (against a saved real page) and the collector:
+- Deterministic tests (37) cover the fixtures, the SQLite round trip, the rule
+  evaluation, the parser profiles (against a saved real page), the collector and
+  the daily check (digest text, saved files, schedule, an injected pass):
   `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
@@ -194,9 +230,11 @@ are untouched.
 ## Repository layout
 
 ```text
-dev.sh             start / stop / status for the local demo (port 8767)
+dev.sh             start / stop / status for the local demo (port 8767) + scheduler
+daily.sh           run now / start / stop / status for the daily check
 app.py            FastAPI app: pages, /api/bootstrap, product history, alerts,
-                   live collection, AI note
+                   live collection, daily digest, AI note
+daily.py           the daily pass: collect, store, digest text/file, scheduler loop
 storage.py         SQLite schema, demo seeding, rules, live readings, queries
 alerts.py          rule normalisation, matches, digest (server-side only)
 collector.py       HTTP fetch + parser profile, one reading per source
@@ -210,5 +248,5 @@ templates/         landing, Overview, product, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              product brief, demo script (planned)
-tests/             deterministic tests: fixtures, rules, parser, collector
+tests/             deterministic tests: fixtures, rules, parser, collector, daily
 ```

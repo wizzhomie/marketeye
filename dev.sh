@@ -28,6 +28,9 @@ read_pid() {
 
 start() {
   if is_up; then
+    # The server is up but may have been started by hand: make sure the daily
+    # scheduler runs alongside it.
+    "$ROOT/daily.sh" start >/dev/null 2>&1 || true
     echo "already running: $URL"
     return 0
   fi
@@ -50,7 +53,9 @@ start() {
 
   for _ in $(seq 1 100); do
     if is_up; then
+      "$ROOT/daily.sh" start >/dev/null 2>&1 || true
       echo "started: $URL (pid $(read_pid), log .run/server.log)"
+      echo "daily check: started (log .run/daily.log)"
       return 0
     fi
     sleep 0.1
@@ -61,6 +66,7 @@ start() {
 }
 
 stop() {
+  "$ROOT/daily.sh" stop >/dev/null 2>&1 || true
   local pid
   pid="$(read_pid)"
   if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
@@ -78,12 +84,15 @@ stop() {
 }
 
 status() {
+  local code=0
   if is_up; then
     echo "running: $URL"
   else
     echo "not running"
-    return 1
+    code=1
   fi
+  "$ROOT/daily.sh" status 2>/dev/null || true
+  return "$code"
 }
 
 case "${1:-status}" in

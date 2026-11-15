@@ -31,6 +31,11 @@ def _fmt(value: float | int) -> str:
     return f"{value:,}"
 
 
+def amount_text(value: float | int) -> str:
+    """Formatted amount for digests: 62,500 or 51.77."""
+    return _fmt(value)
+
+
 def percent_text(raw: float) -> str:
     """'12', '4' or '0.5' — one decimal only for sub-percent moves."""
     raw = abs(raw)

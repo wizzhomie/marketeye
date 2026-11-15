@@ -88,6 +88,22 @@
 
       <div class="live-grid" id="live-sources"></div>
 
+      <section class="card daily" aria-labelledby="daily-title">
+        <div class="card-head">
+          <div>
+            <h2 id="daily-title">Daily digest</h2>
+            <p class="card-sub">The scheduled check, saved as plain text</p>
+          </div>
+          <div class="card-head__actions">
+            <button class="btn btn--outline btn--sm" type="button" id="copy-daily">Copy</button>
+            <button class="btn btn--outline btn--sm" type="button" id="download-daily">Download .txt</button>
+            <button class="btn btn--primary btn--sm" type="button" id="run-daily">Run daily check</button>
+          </div>
+        </div>
+        <p class="daily__meta" id="daily-meta">Loading the schedule…</p>
+        <pre class="digest" id="daily-text" aria-live="polite">No digest yet. Run the daily check to fetch every page and write one.</pre>
+      </section>
+
       <section class="card live-how" aria-labelledby="how-title">
         <div class="card-head">
           <div>
@@ -106,6 +122,12 @@
             a plain user agent, reads the title and the price and stores one reading.
             A missing or unreadable price is stored as an error with the reason — never
             as a price.
+          </li>
+          <li>
+            <b>One pass a day.</b> <code>./daily.sh</code> runs the same collection once
+            a day and writes a plain-text digest to <code>data/digests/</code>.
+            <b>Run daily check</b> does that pass right now, so the digest can be seen
+            without a terminal.
           </li>
           <li>
             <b>One source is real, one is local.</b>

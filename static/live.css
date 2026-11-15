@@ -150,6 +150,23 @@
   color: var(--muted);
 }
 
+/* --- daily digest ------------------------------------------------------- */
+
+.daily {
+  margin-bottom: 16px;
+}
+
+.daily__meta {
+  padding: 12px 20px 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.daily .digest {
+  padding-top: 10px;
+  padding-bottom: 18px;
+}
+
 /* --- how it works ------------------------------------------------------- */
 
 .live-how {
@@ -223,6 +240,7 @@
   .readings__title,
   .reading,
   .readings__empty,
+  .daily__meta,
   .live-how__list {
     padding-inline: 14px;
   }

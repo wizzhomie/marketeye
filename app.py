@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 import ai_note
 import alerts
 import collector
+import daily
 import demo_shop
 import page_parser
 import storage
@@ -295,7 +296,34 @@ def api_live_reset() -> dict:
     finally:
         connection.close()
     demo_shop.reset()
+    daily.clear_digests()
     return _live_payload()
+
+
+@app.get("/api/daily")
+def api_daily() -> dict:
+    """The scheduler state and the latest saved digest."""
+    return {"scheduler": daily.scheduler_status(), "latest": daily.latest_digest()}
+
+
+@app.post("/api/daily/run")
+async def api_daily_run() -> dict:
+    """Run one daily pass now: collect, store, advance the demo shop, save digest."""
+    if _live_lock.locked():
+        return JSONResponse({"detail": "A check is already running."}, status_code=409)
+    async with _live_lock:
+        try:
+            result = await asyncio.to_thread(daily.run_pass)
+        except Exception as exc:  # noqa: BLE001 - report the reason, keep the server up
+            return JSONResponse(
+                {"detail": f"The daily check failed: {type(exc).__name__}."},
+                status_code=500,
+            )
+    return {
+        "scheduler": daily.scheduler_status(),
+        "latest": daily.latest_digest(),
+        "result": result,
+    }
 
 
 @app.get("/api/products/{product_id}/history")

@@ -8,9 +8,10 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **front-end first.** The landing page is built and runs on saved demo
-> data. The dashboard and the FastAPI backend are next. This is a portfolio
-> project, not a production platform.
+> Status: **front-end first.** The landing page and the Overview demo panel are
+> built and run on saved demo data. The product page, history, alerts detail and
+> the FastAPI backend are next. This is a portfolio project, not a production
+> platform.
 
 ## The problem, in one paragraph
 
@@ -24,6 +25,10 @@ what is missing is a daily, comparable, alerting view of it.
 
 - A landing page that explains the product: a problem story, three steps, feature
   list and one demo day of the future panel — all in the project's design code.
+- An **Overview** demo panel: watch list with current prices, change badges since
+  the previous snapshot, market spread, undercut highlights, snapshot moves and an
+  alert plate. "Collect now" simulates the next daily snapshot, "Reset demo" makes
+  the show repeatable.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -41,6 +46,16 @@ to stay readable, so the monochrome palette carries meaning through shapes rathe
 than colour: price moves are arrows and `+`/`−` signs, alerts are inverted black
 plates. Everything is drawn with CSS and inline SVG — no external fonts, images or
 JS libraries, so the demo also works offline.
+
+## Demo flow
+
+1. Landing page: the problem, three steps, features and one sample price day.
+2. “Watch the demo” → **Overview**: five products × three competitors, current
+   prices, change since the previous snapshot, spread and a live alert.
+3. **Collect now** simulates the daily collection on saved pages and appends the
+   next snapshot: prices move, moves and alerts update.
+4. **Reset demo** brings the baseline back, so the demo can be shown again.
+5. The panel states its limits honestly: demo data, saved pages, no live scraping.
 
 ## How it works (planned)
 
@@ -68,8 +83,8 @@ No dependencies yet: a small Python standard-library server serves the landing
 page. The FastAPI app will take over the same port later.
 
 ```bash
-./dev.sh start     # local site: http://127.0.0.1:8767/
-./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net
+./dev.sh start     # local site: http://127.0.0.1:8767/ and /overview
+./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
 ```
 
 DocFlow keeps port 8765; MarketEye uses **8767**.
@@ -86,10 +101,14 @@ are untouched.
 
 ## Status and limits
 
-- Landing page implemented and checked at desktop, tablet and mobile widths.
+- Landing page and the Overview demo panel implemented and checked at desktop,
+  tablet and mobile widths.
+- Overview runs on frozen fixtures (`static/demo-data.js`); collection is simulated
+  in the browser so the demo is deterministic.
+- Product page, history chart, CSV export, alert delivery and the FastAPI backend
+  are not implemented yet.
 - Interface copy is in English (the product's language); the chapter text here and
   in `memory/` is in Russian for the owner.
-- Dashboard, storage, collection and alerts are not implemented yet.
 - Live collection is deliberately not the first step: the demo proves the product
   mechanics on saved snapshots, then a live adapter is added per site.
 - No accounts, roles or billing; one workspace, one user.
@@ -100,8 +119,8 @@ are untouched.
 ```text
 dev.sh             start / stop / status for the local demo (port 8767)
 dev_server.py      tiny standard-library static server (replaced by FastAPI)
-templates/         landing page markup
-static/            landing styles and the eye-tracking script
+templates/         landing page and Overview panel markup
+static/            styles, eye tracking, Overview logic and frozen demo data
 docs/              product brief, demo script (planned)
 memory/            working memory: handoff, decisions, plain log
 app.py             FastAPI app: watch list, dashboard, API (planned)

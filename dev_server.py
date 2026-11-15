@@ -7,6 +7,7 @@ port and serves these files itself.
 
 Routes:
     /            -> templates/index.html
+    /overview    -> templates/overview.html
     /static/...  -> files from static/
     /healthz     -> "ok" (used by dev.sh)
 """
@@ -22,6 +23,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parent
 STATIC_DIR = (ROOT / "static").resolve()
 INDEX = ROOT / "templates" / "index.html"
+OVERVIEW = ROOT / "templates" / "overview.html"
 DEFAULT_PORT = 8767
 
 
@@ -33,6 +35,10 @@ class Handler(BaseHTTPRequestHandler):
 
         if path in ("/", "/index.html"):
             self._send_file(INDEX, "text/html; charset=utf-8")
+            return
+
+        if path in ("/overview", "/overview/"):
+            self._send_file(OVERVIEW, "text/html; charset=utf-8")
             return
 
         if path == "/healthz":

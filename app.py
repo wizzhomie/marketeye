@@ -26,6 +26,7 @@ import alerts
 import collector
 import daily
 import demo_shop
+import export
 import page_parser
 import storage
 
@@ -335,6 +336,24 @@ def api_product_history(product_id: str, days: int = 14) -> dict:
         raise HTTPException(status_code=404, detail="Unknown product") from exc
     finally:
         connection.close()
+
+
+@app.get("/api/export/history.csv", include_in_schema=False)
+def api_export_history() -> Response:
+    """The whole demo price history as one flat CSV file."""
+    connection = storage.connect()
+    try:
+        data = storage.bootstrap(connection)
+    finally:
+        connection.close()
+    return Response(
+        content=export.history_csv(data),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{export.suggest_filename(data)}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.post("/api/ai/note")

@@ -13,8 +13,9 @@ competitor.
 > serve the data and evaluate the rules, and the optional AI buyer note is wired to
 > Groq. The live collector reads a public scraping sandbox and a local competitor
 > shop over HTTP, and a daily check runs that pass on a schedule and writes a
-> plain-text digest to disk. Real alert delivery and CSV export are next. This is a
-> portfolio project, not a production platform.
+> plain-text digest to disk. The price history exports to CSV from the Overview
+> top bar. Real alert delivery is next. This is a portfolio project, not a
+> production platform.
 
 ## The problem, in one paragraph
 
@@ -53,7 +54,8 @@ what is missing is a daily, comparable, alerting view of it.
   chart and the market spread per product (the product page covers this for now).
 - An alert when a price moves beyond a threshold, and a short daily digest —
   shown and downloadable today, delivered to email or chat later.
-- CSV export of the history.
+- CSV export of the history from the Overview top bar: one flat table (day,
+  product, competitor, price, our price) for a spreadsheet.
 
 ## Design code
 
@@ -71,24 +73,27 @@ React or Tailwind.
 1. Landing page: the problem, three steps, features and one sample price day.
 2. “Watch the demo” → **Overview**: five products × three competitors, current
    prices, change since the previous snapshot, spread and a live alert.
-3. Click a product name or **Inspect listing** on an alert → **product page**:
+3. **Export CSV** in the Overview top bar downloads the whole history as one flat
+   table (day, product, competitor, price, our price) as
+   `marketeye-history-YYYY-MM-DD.csv`.
+4. Click a product name or **Inspect listing** on an alert → **product page**:
    two weeks of history, the chart, the spread and the latest snapshots.
-4. **Collect now** simulates the daily collection on saved pages and appends the
+5. **Collect now** simulates the daily collection on saved pages and appends the
    next snapshot: prices move, moves and alerts update.
-5. **Draft with AI** asks the model for a short buyer note based only on that
+6. **Draft with AI** asks the model for a short buyer note based only on that
    verified snapshot (optional — needs a Groq key).
-6. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
+7. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
    threshold and watch the list and the digest follow; copy the digest or download
    the `.txt`.
-7. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
+8. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
    stores a reading for each and shows the move against the previous check; the
    local competitor shop moves to its next price after every check.
-8. **Daily check** on the same screen: **Run daily check** fetches both pages,
+9. **Daily check** on the same screen: **Run daily check** fetches both pages,
    stores the readings and writes a plain-text digest; the card shows the last run,
    the automatic schedule and Copy / Download for the digest.
-9. **Reset demo** brings the baseline back, so the demo can be shown again. On the
-   live screen it also clears the readings and the saved digests.
-10. The panels state their limits honestly: demo data and saved pages for the
+10. **Reset demo** brings the baseline back, so the demo can be shown again. On the
+    live screen it also clears the readings and the saved digests.
+11. The panels state their limits honestly: demo data and saved pages for the
     panels; the live screen shows exactly which pages were fetched and when.
 
 ## AI buyer note (optional)
@@ -139,11 +144,13 @@ screen shows the latest digest and can run the same pass on demand with **Run da
 check**, so the demo does not need a terminal. `./dev.sh start` starts the
 scheduler with the app; `./daily.sh run|start|stop|status|show|log` manages it
 directly. `GET /api/daily` returns the latest digest and the scheduler state,
-`POST /api/daily/run` runs one pass for the browser.
+`POST /api/daily/run` runs one pass for the browser. The CSV export is one more
+GET: `/api/export/history.csv` builds the flat table from SQLite, and the Overview
+top bar is a plain download link to it.
 
 What is still missing is the risky, boring part: adapters for sites that block
-bots or change layouts, consent and robots handling, alert delivery (email or
-chat) and CSV export. Adding a real site stays a parser profile plus one line in
+bots or change layouts, consent and robots handling, and real alert delivery
+(email or chat). Adding a real site stays a parser profile plus one line in
 `live_sources.json` — the same "profile is data" approach as the first portfolio
 project.
 
@@ -213,11 +220,15 @@ are untouched.
   loop alive (once a day at 09:00 local by default), `./dev.sh start` starts it
   with the app, and the Live check screen can run the same pass on demand. There
   are no retries or catch-up runs after downtime: a missed day stays missed.
-- Real alert delivery (email/chat) and CSV export are not implemented yet. The
-  digest is generated on the server and downloaded from the browser as a `.txt`.
-- Deterministic tests (37) cover the fixtures, the SQLite round trip, the rule
-  evaluation, the parser profiles (against a saved real page), the collector and
-  the daily check (digest text, saved files, schedule, an injected pass):
+- CSV export is implemented as a plain GET: `/api/export/history.csv` builds the
+  table from SQLite and the Overview top bar downloads it as
+  `marketeye-history-YYYY-MM-DD.csv`. No accounts or background jobs involved.
+- Real alert delivery (email/chat) is not implemented yet. The digest is generated
+  on the server and downloaded from the browser as a `.txt`.
+- Deterministic tests (46) cover the fixtures, the SQLite round trip, the rule
+  evaluation, the parser profiles (against a saved real page), the collector, the
+  daily check (digest text, saved files, schedule, an injected pass) and the CSV
+  export:
   `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
@@ -233,13 +244,14 @@ are untouched.
 dev.sh             start / stop / status for the local demo (port 8767) + scheduler
 daily.sh           run now / start / stop / status for the daily check
 app.py            FastAPI app: pages, /api/bootstrap, product history, alerts,
-                   live collection, daily digest, AI note
+                   live collection, daily digest, CSV export, AI note
 daily.py           the daily pass: collect, store, digest text/file, scheduler loop
 storage.py         SQLite schema, demo seeding, rules, live readings, queries
 alerts.py          rule normalisation, matches, digest (server-side only)
 collector.py       HTTP fetch + parser profile, one reading per source
 page_parser.py     selector/price extraction; refuses to guess
 demo_shop.py       local "competitor shop" HTTP server with a moving price
+export.py          flat CSV export of the price history
 parsers/           per-site parser profiles as data (profiles.json)
 live_sources.json  watched URLs with their parser profiles
 ai_note.py         optional Groq buyer note (server-side only)
@@ -248,5 +260,5 @@ templates/         landing, Overview, product, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              product brief, demo script (planned)
-tests/             deterministic tests: fixtures, rules, parser, collector, daily
+tests/             deterministic tests: fixtures, rules, parser, collector, daily, export
 ```

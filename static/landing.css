@@ -398,7 +398,7 @@ a {
 .poster {
   margin: 0.18em 0 0;
   font-family: var(--f-display);
-  font-size: clamp(42px, 6.4vw, 92px);
+  font-size: clamp(40px, 6vw, 86px);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 0.94;
@@ -829,11 +829,10 @@ a {
   color: var(--muted);
 }
 
-@media (max-width: 880px) {
-  .table-hint {
-    display: block;
-  }
+.table-hint.is-visible {
+  display: block;
 }
+
 
 .demo-table {
   width: 100%;

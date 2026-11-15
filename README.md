@@ -78,6 +78,8 @@ DocFlow keeps port 8765; MarketEye uses **8767**.
 ## Status and limits
 
 - Landing page implemented and checked at desktop, tablet and mobile widths.
+- Interface copy is in English (the product's language); the chapter text here and
+  in `memory/` is in Russian for the owner.
 - Dashboard, storage, collection and alerts are not implemented yet.
 - Live collection is deliberately not the first step: the demo proves the product
   mechanics on saved snapshots, then a live adapter is added per site.

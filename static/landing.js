@@ -57,6 +57,26 @@
     update();
   }
 
+  /* --- table hint: show it only when the table really overflows ---------- */
+  const tableScroll = document.querySelector(".table-scroll");
+  const tableHint = document.querySelector(".table-hint");
+
+  if (tableScroll && tableHint) {
+    let frame = 0;
+    const updateHint = () => {
+      frame = 0;
+      tableHint.classList.toggle(
+        "is-visible",
+        tableScroll.scrollWidth > tableScroll.clientWidth + 1
+      );
+    };
+    const scheduleHint = () => {
+      if (!frame) frame = requestAnimationFrame(updateHint);
+    };
+    window.addEventListener("resize", scheduleHint);
+    updateHint();
+  }
+
   /* --- reveal blocks on scroll ------------------------------------------- */
   const reveals = Array.from(document.querySelectorAll(".reveal"));
   if (reveals.length === 0) return;

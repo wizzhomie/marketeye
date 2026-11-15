@@ -18,17 +18,21 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import ai_note
 import alerts
+import collector
+import demo_shop
+import page_parser
 import storage
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "templates"
 MAX_AI_BODY = 32 * 1024
 AI_MIN_INTERVAL = 2.0
+DEMO_SHOP_PORT = 8768
 
 PAGES = {
     "/": "index.html",
@@ -38,6 +42,8 @@ PAGES = {
     "/product/": "product.html",
     "/alerts": "alerts.html",
     "/alerts/": "alerts.html",
+    "/live": "live.html",
+    "/live/": "live.html",
 }
 
 _ai_state = {"last_call": 0.0}
@@ -54,7 +60,19 @@ async def lifespan(_: FastAPI):
         storage.seed(connection, data)
     finally:
         connection.close()
+
+    # The "competitor shop" is a real HTTP server on localhost; the collector
+    # fetches it like any other page, so the live path is not a special case.
+    shop = None
+    try:
+        shop = demo_shop.start(DEMO_SHOP_PORT)
+    except OSError as exc:
+        print(f"[demo-shop] could not start on port {DEMO_SHOP_PORT}: {exc}", flush=True)
+    app.state.demo_shop = shop
     yield
+    if shop is not None:
+        shop.shutdown()
+        shop.server_close()
 
 
 app = FastAPI(
@@ -94,6 +112,16 @@ for _path, _template in PAGES.items():
         lambda template=_template: _page(template),
         methods=["GET"],
         include_in_schema=False,
+    )
+
+
+@app.get("/demo-shop", include_in_schema=False)
+def demo_shop_page() -> Response:
+    """The local "competitor shop" page, for a human to look at."""
+    return Response(
+        content=demo_shop.render_page(),
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
     )
 
 
@@ -168,6 +196,106 @@ async def api_evaluate_alerts(request: Request) -> dict:
         return alerts.evaluate(data, payload.get("rules"), payload.get("snapshot"))
     except (TypeError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+_live_lock = asyncio.Lock()
+
+
+def _live_payload() -> dict:
+    """Configured live sources, their readings and the latest change."""
+    sources = collector.load_sources()
+    profiles = page_parser.load_profiles()
+    connection = storage.connect()
+    try:
+        payload_sources = []
+        collected_at = None
+        for source in sources:
+            readings = storage.live_readings(connection, source["id"], limit=8)
+            latest = readings[0] if readings else None
+            ok_readings = [reading for reading in readings if reading["status"] == "ok"]
+            last_ok = ok_readings[0] if ok_readings else None
+            previous_ok = ok_readings[1] if len(ok_readings) > 1 else None
+
+            change = None
+            if last_ok and previous_ok:
+                amount = round(last_ok["price"] - previous_ok["price"], 2)
+                percent = (
+                    abs(round(amount / previous_ok["price"] * 100))
+                    if previous_ok["price"]
+                    else 0
+                )
+                change = {
+                    "amount": amount,
+                    "percent": percent,
+                    "direction": "down" if amount < 0 else ("up" if amount > 0 else "flat"),
+                    "fromPrice": previous_ok["price"],
+                }
+
+            if latest and (collected_at is None or latest["fetchedAt"] > collected_at):
+                collected_at = latest["fetchedAt"]
+
+            profile = profiles.get(source["profile"], {})
+            payload_sources.append(
+                {
+                    "id": source["id"],
+                    "competitor": source["competitor"],
+                    "product": source["product"],
+                    "url": source["url"],
+                    "previewUrl": source.get("previewUrl", source["url"]),
+                    "profile": source["profile"],
+                    "profileTitle": profile.get("title", source["profile"]),
+                    "latest": latest,
+                    "lastOk": last_ok,
+                    "change": change,
+                    "readings": readings,
+                }
+            )
+
+        return {
+            "sources": payload_sources,
+            "collectedAt": collected_at,
+            "demoShop": {
+                "url": f"http://127.0.0.1:{DEMO_SHOP_PORT}/cement",
+                "tick": demo_shop.state()["tick"],
+                "price": demo_shop.current_price(),
+            },
+        }
+    finally:
+        connection.close()
+
+
+@app.get("/api/live")
+def api_live() -> dict:
+    return _live_payload()
+
+
+@app.post("/api/live/collect")
+async def api_live_collect() -> dict:
+    """Fetch every live source once, store the readings, move the demo shop on."""
+    if _live_lock.locked():
+        return JSONResponse({"detail": "Collection is already running."}, status_code=409)
+    async with _live_lock:
+        readings = await asyncio.to_thread(collector.collect_all)
+        connection = storage.connect()
+        try:
+            for reading in readings:
+                storage.add_live_reading(connection, reading)
+        finally:
+            connection.close()
+        demo_shop.advance_tick()
+        return _live_payload()
+
+
+@app.post("/api/live/reset")
+def api_live_reset() -> dict:
+    """Forget the readings and put the demo shop back to its first price."""
+    connection = storage.connect()
+    try:
+        storage.delete_live_readings(connection)
+    finally:
+        connection.close()
+    demo_shop.reset()
+    return _live_payload()
 
 
 @app.get("/api/products/{product_id}/history")

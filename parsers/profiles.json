@@ -1,0 +1,18 @@
+{
+  "books_toscrape": {
+    "title": "Books to Scrape",
+    "kind": "live",
+    "title_selector": "h1",
+    "price_selector": ".price_color",
+    "price_pattern": "£\\s*(?P<amount>[0-9]+(?:\\.[0-9]{1,2})?)",
+    "currency": "GBP"
+  },
+  "demo_shop": {
+    "title": "Demo Build Supply",
+    "kind": "demo",
+    "title_selector": "h1",
+    "price_selector": ".price",
+    "price_pattern": "(?P<amount>[0-9]+(?:\\.[0-9]{1,2})?)\\s*RUB",
+    "currency": "RUB"
+  }
+}

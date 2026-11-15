@@ -65,6 +65,24 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+-- Live readings are real fetched pages, not demo fixtures: the seed leaves this
+-- table alone, so a restart keeps what was actually collected.
+CREATE TABLE IF NOT EXISTS live_readings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    title TEXT,
+    price REAL,
+    currency TEXT,
+    raw_value TEXT,
+    note TEXT,
+    url TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_readings_source
+    ON live_readings (source_id, id DESC);
 """
 
 
@@ -160,6 +178,64 @@ def seed(connection: sqlite3.Connection, data: dict) -> None:
                 ("snapshot_window", str(SNAPSHOT_WINDOW)),
             ],
         )
+
+
+_READING_FIELDS = {
+    "sourceId": "source_id",
+    "fetchedAt": "fetched_at",
+    "status": "status",
+    "title": "title",
+    "price": "price",
+    "currency": "currency",
+    "rawValue": "raw_value",
+    "note": "note",
+    "url": "url",
+}
+
+
+def _reading_row(row: sqlite3.Row) -> dict:
+    reading = {"id": row["id"]}
+    for name, column in _READING_FIELDS.items():
+        reading[name] = row[column]
+    return reading
+
+
+def add_live_reading(connection: sqlite3.Connection, reading: dict) -> int:
+    """Store one fetched reading (ok or error) and return its id."""
+    cursor = connection.execute(
+        "INSERT INTO live_readings "
+        "(source_id, fetched_at, status, title, price, currency, raw_value, note, url) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            reading["sourceId"],
+            reading["fetchedAt"],
+            reading["status"],
+            reading.get("title"),
+            reading.get("price"),
+            reading.get("currency"),
+            reading.get("rawValue"),
+            reading.get("note"),
+            reading["url"],
+        ),
+    )
+    connection.commit()
+    return int(cursor.lastrowid)
+
+
+def live_readings(
+    connection: sqlite3.Connection, source_id: str, limit: int = 8
+) -> list[dict]:
+    """The newest readings for one source, newest first."""
+    rows = connection.execute(
+        "SELECT * FROM live_readings WHERE source_id = ? ORDER BY id DESC LIMIT ?",
+        (source_id, limit),
+    )
+    return [_reading_row(row) for row in rows]
+
+
+def delete_live_readings(connection: sqlite3.Connection) -> None:
+    with connection:
+        connection.execute("DELETE FROM live_readings")
 
 
 def save_alert_rules(connection: sqlite3.Connection, rules: list[dict]) -> None:

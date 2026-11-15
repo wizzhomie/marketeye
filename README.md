@@ -8,11 +8,12 @@ day the service records their prices. The dashboard shows what moved, by how muc
 and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
-> Status: **front-end first.** The landing page, the Overview demo panel, the
-> product page with a two-week price history and the Alerts screen with a plain-text
-> daily digest are built in a quiet monochrome workspace style; an optional AI buyer
-> note is wired to Groq. Real alert delivery, CSV export and the FastAPI backend are
-> next. This is a portfolio project, not a production platform.
+> Status: **working demo on real HTTP.** The landing page, the Overview panel, the
+> product page, the Alerts screen and a live collector are built; FastAPI + SQLite
+> serve the data and evaluate the rules, and the optional AI buyer note is wired to
+> Groq. The live collector reads a public scraping sandbox and a local competitor
+> shop over HTTP. Real alert delivery and CSV export are next. This is a portfolio
+> project, not a production platform.
 
 ## The problem, in one paragraph
 
@@ -37,6 +38,10 @@ what is missing is a daily, comparable, alerting view of it.
   alerts they trigger on the snapshot, and a one-message daily digest in plain text
   that can be copied or downloaded. Rules are evaluated and stored on the server;
   delivery (email or chat) is not connected yet.
+- A **Live check** screen: real pages fetched over HTTP with parser profiles, one
+  stored reading per check, the last move against the previous check and the honest
+  error when a page cannot be read. It watches a public scraping sandbox and a
+  local competitor shop whose price changes between checks.
 - A watch list: product + competitor + URL (a seed set of 5 products × 3
   competitors for the demo).
 - A daily snapshot of each page, with the price parsed and stored as history.
@@ -71,8 +76,12 @@ React or Tailwind.
 6. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
    threshold and watch the list and the digest follow; copy the digest or download
    the `.txt`.
-7. **Reset demo** brings the baseline back, so the demo can be shown again.
-8. The panels state their limits honestly: demo data, saved pages, no live scraping.
+7. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
+   stores a reading for each and shows the move against the previous check; the
+   local competitor shop moves to its next price after every check.
+8. **Reset demo** brings the baseline back, so the demo can be shown again.
+9. The panels state their limits honestly: demo data and saved pages for the
+   panels; the live screen shows exactly which pages were fetched.
 
 ## AI buyer note (optional)
 
@@ -100,17 +109,24 @@ watch list (product, competitor, url)
 ```
 
 Today the SQLite database is rebuilt from `static/demo.json` on every start, and
-FastAPI serves the three panels, the API and the AI note. The panels load their
-data over the API (with the same JSON as an offline fallback), and the alerts
-screen goes further: rules are saved with `PUT /api/alerts/rules`, while
+FastAPI serves the panels, the API and the AI note. The panels load their data over
+the API (with the same JSON as an offline fallback), and the alerts screen goes
+further: rules are saved with `PUT /api/alerts/rules`, while
 `POST /api/alerts/evaluate` returns the matches, stats and the digest. The browser
 only renders what the server decided.
 
-The collector and the snapshot adapter are the honest core still to come: live
-sites block bots, change layouts and need consent, so the demo runs on saved pages
-and a local fake source. A live site is enabled by adding its parser profile and
-pointing the collector at it — the same "profile is data" approach as the first
-portfolio project.
+The live part is real but small on purpose. `POST /api/live/collect` fetches each
+watched URL over HTTP with a plain user agent, reads the title and the price with
+the parser profile, and stores one reading in SQLite. A page that cannot be
+reached, or whose price does not match the profile, is stored as an error with the
+reason — the collector never guesses a price. Readings are not demo fixtures, so
+the seed leaves them alone and a restart keeps what was actually collected.
+
+What is still missing is the boring, risky part: a scheduler that runs the
+checks every day, adapters for sites that block bots or change layouts, consent
+and robots handling, and alert delivery. Adding a real site stays a parser profile
+plus one line in `live_sources.json` — the same "profile is data" approach as the
+first portfolio project.
 
 ## Run it
 
@@ -119,12 +135,18 @@ Python 3.12 + FastAPI + SQLite. The virtualenv is local and gitignored.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-./dev.sh start     # local site: http://127.0.0.1:8767/, /overview, /product?id=cement, /alerts
+./dev.sh start     # http://127.0.0.1:8767/ · /overview · /product?id=cement · /alerts · /live
 ./tunnel.sh start  # tailnet address: https://marketeye.tail5bc03a.ts.net/overview
 ```
 
 The SQLite database (`data/marketeye.db`, gitignored) is rebuilt from the fixtures
 on start, so the demo is deterministic and a broken database is fixed by a restart.
+Live readings are kept across restarts; **Reset live demo** clears them.
+
+The app also starts the local competitor shop on **127.0.0.1:8768** and proxies a
+readable copy at `/demo-shop`; the collector watches it over HTTP like any other
+site. Watched URLs live in `live_sources.json` and a new site is a parser profile
+in `parsers/profiles.json`.
 
 For the optional AI note, copy `.env.example` to `.env` and add a free Groq key.
 The file is gitignored; the demo works without it.
@@ -151,14 +173,21 @@ are untouched.
 - Alert rules are evaluated and stored on the server (`alerts.py`); the browser only
   renders the result. Saved switches and thresholds survive a page reload and reset
   when the demo database is rebuilt on restart.
+- Live collection is implemented for two honest sources: `books.toscrape.com` (a
+  public scraping sandbox whose price does not move) and a local competitor shop
+  served by the app on port 8768 (its price changes after every check). No real
+  retailer is scraped, and there is no scheduler yet: checks run when you press
+  **Collect now**.
 - Real alert delivery (email/chat) and CSV export are not implemented yet. The
   digest is generated on the server and downloaded from the browser as a `.txt`.
-- Deterministic tests cover the fixtures, the SQLite round trip and the rule
-  evaluation: `.venv/bin/python -m unittest discover -s tests -v`.
+- Deterministic tests (22) cover the fixtures, the SQLite round trip, the rule
+  evaluation, the parser profiles (against a saved real page) and the collector:
+  `.venv/bin/python -m unittest discover -s tests -v`.
 - Interface copy is in English (the product's language); this README is in
   Russian for the owner.
-- Live collection is deliberately not the first step: the demo proves the product
-  mechanics on saved snapshots, then a live adapter is added per site.
+- Saved snapshots still drive the panels; the live collector is a small separate
+  proof on two honest sources, and a real site is added one parser profile at a
+  time.
 - No accounts, roles or billing; one workspace, one user.
 - The demo is a portfolio demonstration, not a claim of production readiness.
 
@@ -166,16 +195,20 @@ are untouched.
 
 ```text
 dev.sh             start / stop / status for the local demo (port 8767)
-app.py            FastAPI app: pages, /api/bootstrap, product history, alerts, AI
-storage.py         SQLite schema, demo seeding, rules and queries
+app.py            FastAPI app: pages, /api/bootstrap, product history, alerts,
+                   live collection, AI note
+storage.py         SQLite schema, demo seeding, rules, live readings, queries
 alerts.py          rule normalisation, matches, digest (server-side only)
+collector.py       HTTP fetch + parser profile, one reading per source
+page_parser.py     selector/price extraction; refuses to guess
+demo_shop.py       local "competitor shop" HTTP server with a moving price
+parsers/           per-site parser profiles as data (profiles.json)
+live_sources.json  watched URLs with their parser profiles
 ai_note.py         optional Groq buyer note (server-side only)
 requirements.txt   pinned FastAPI + uvicorn
-templates/         landing page, Overview panel, product page and Alerts markup
+templates/         landing, Overview, product, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              product brief, demo script (planned)
-collector.py       snapshot and HTTP collection (planned)
-parsers/           per-site parser profiles (planned)
-tests/             deterministic tests for fixtures and alert rules
+tests/             deterministic tests: fixtures, rules, parser, collector
 ```

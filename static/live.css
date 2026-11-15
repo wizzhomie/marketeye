@@ -1,0 +1,229 @@
+/* ==========================================================================
+   Market Eye — Live check
+   Real fetched pages: source cards, readings and the honest how-it-works list.
+   Built on theme.css + the Overview shell.
+   ========================================================================== */
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.source {
+  min-width: 0;
+}
+
+.source__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.source__competitor {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.source__product {
+  margin-top: 3px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.source__url {
+  padding: 11px 20px 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.source__url a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.source__url a:hover {
+  border-bottom-color: var(--ink);
+}
+
+.source__price-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 20px 0;
+}
+
+.source__price {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.source__price span {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.source__price--none {
+  color: var(--muted);
+}
+
+.source__meta {
+  padding: 4px 20px 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.source__note {
+  margin: 0 20px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--canvas);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+
+/* --- readings ----------------------------------------------------------- */
+
+.readings {
+  border-top: 1px solid var(--hairline);
+  padding-bottom: 8px;
+}
+
+.readings__title {
+  padding: 10px 20px 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.reading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 20px;
+  font-size: 11.5px;
+}
+
+.reading__time {
+  color: var(--muted);
+}
+
+.reading__price {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.reading--error .reading__price {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.readings__empty {
+  padding: 4px 20px 12px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* --- how it works ------------------------------------------------------- */
+
+.live-how {
+  margin-bottom: 16px;
+}
+
+.live-how__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px 18px;
+}
+
+.live-how__list li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.live-how__list li::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0.45;
+}
+
+.live-how__list b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.live-how__list code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--surface);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+
+.live-how__list a {
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.live-how__list a:hover {
+  border-bottom-color: var(--ink);
+}
+
+/* --- responsive --------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .source__head,
+  .source__url,
+  .source__price-row,
+  .source__meta,
+  .source__note,
+  .readings__title,
+  .reading,
+  .readings__empty,
+  .live-how__list {
+    padding-inline: 14px;
+  }
+}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8f2">
+  <title>Live check — Market Eye</title>
+  <meta name="description" content="Market Eye demo: a real live page collection over HTTP with parser profiles, stored readings and a local competitor shop whose price changes between checks.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23141310'/%3E%3Ccircle cx='26' cy='32' r='7' fill='%23faf8f2'/%3E%3Ccircle cx='40' cy='32' r='7' fill='%23faf8f2'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/overview.css">
+  <link rel="stylesheet" href="/static/live.css">
+</head>
+<body>
+  <a class="sr-only" href="#main">Skip to content</a>
+
+  <div class="app">
+    <aside class="sidebar">
+      <a class="brand brand--light" href="/" aria-label="Market Eye — back to the site">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+        <span class="brand-word">Market Eye</span>
+      </a>
+
+      <p class="nav-label">Workspace</p>
+      <nav class="nav" aria-label="Workspace">
+        <a href="/overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+          Overview
+        </a>
+        <a href="/overview#watch-list">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4.2" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="4.2" cy="18" r="1.1" fill="currentColor" stroke="none"/></svg>
+          Watch list
+        </a>
+        <a href="/alerts">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 6-2.5 8h17c0-2-2.5-2-2.5-8"/><path d="M10.5 21a2 2 0 0 0 3 0"/></svg>
+          Alerts
+        </a>
+        <a href="/overview#moves">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+          Snapshots
+        </a>
+        <a href="/live" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3"/></svg>
+          Live check
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p><b>Demo workspace</b>5 products · 3 competitors<br>Saved pages, not live</p>
+        <a class="sidebar-link" href="/">← Back to site</a>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="topbar">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <a href="/overview">Workspace</a> / <b>Live check</b>
+        </nav>
+        <div class="actions">
+          <button class="btn btn--outline" type="button" id="reset-live">Reset live demo</button>
+          <button class="btn btn--primary" type="button" id="collect-live">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/></svg>
+            <span id="collect-live-label">Collect now</span>
+          </button>
+        </div>
+      </div>
+
+      <header class="page-head">
+        <div>
+          <p class="eyebrow">Collection desk</p>
+          <h1>Live check</h1>
+          <p class="sub">Two pages are fetched over the real network: a public scraping sandbox and a local competitor whose price moves between checks.</p>
+        </div>
+        <div class="head-meta">
+          <span class="date" id="last-check">Never collected</span>
+          <span class="badge badge--outline">Live demo</span>
+        </div>
+      </header>
+
+      <div class="banner banner--error" id="live-banner" hidden>
+        <span class="banner__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 8v5"/><path d="M12 16.5v.5"/><circle cx="12" cy="12" r="8.5"/></svg>
+        </span>
+        <p id="live-banner-text"></p>
+      </div>
+
+      <ul class="stats" id="stats" aria-label="Live collection summary"></ul>
+
+      <div class="live-grid" id="live-sources"></div>
+
+      <section class="card live-how" aria-labelledby="how-title">
+        <div class="card-head">
+          <div>
+            <h2 id="how-title">How this works</h2>
+            <p class="card-sub">The collector is deliberately boring and refuses to guess</p>
+          </div>
+        </div>
+        <ul class="live-how__list">
+          <li>
+            <b>A source is data.</b> Each watched page is a URL plus a parser profile
+            from <code>parsers/profiles.json</code>: a title selector, a price selector
+            and a price pattern. A new site is a profile, not new collector code.
+          </li>
+          <li>
+            <b>One reading per check.</b> The collector fetches the page over HTTP with
+            a plain user agent, reads the title and the price and stores one reading.
+            A missing or unreadable price is stored as an error with the reason — never
+            as a price.
+          </li>
+          <li>
+            <b>One source is real, one is local.</b>
+            <a href="https://books.toscrape.com/" target="_blank" rel="noopener">books.toscrape.com</a>
+            is a public scraping sandbox: its price stays put. The
+            <a href="/demo-shop" target="_blank" rel="noopener">demo competitor shop</a>
+            is a small HTTP server on this machine whose price moves on after every
+            check, so a price change is visible in the demo.
+          </li>
+        </ul>
+      </section>
+
+      <p class="note">Live pages are fetched with their real numbers · no real retailer is scraped · demo only</p>
+    </main>
+  </div>
+
+  <noscript>
+    <p class="note">The live check needs JavaScript to show the readings.</p>
+  </noscript>
+
+  <script src="/static/live.js" defer></script>
+</body>
+</html>

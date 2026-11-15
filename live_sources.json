@@ -1,0 +1,17 @@
+[
+  {
+    "id": "demo-cement",
+    "competitor": "Demo Build Supply",
+    "product": "Portland cement M500, 50 kg",
+    "url": "http://127.0.0.1:8768/cement",
+    "previewUrl": "/demo-shop",
+    "profile": "demo_shop"
+  },
+  {
+    "id": "books-attic",
+    "competitor": "Books to Scrape",
+    "product": "A Light in the Attic",
+    "url": "https://books.toscrape.com/catalogue/a-light-in-the-attic_1000/index.html",
+    "profile": "books_toscrape"
+  }
+]

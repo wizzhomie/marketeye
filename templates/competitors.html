@@ -133,6 +133,28 @@
         </div>
       </div>
 
+      <section class="card discover" aria-labelledby="discover-title">
+        <div class="card-head">
+          <div>
+            <h2 id="discover-title">Find a competitor page</h2>
+            <p class="card-sub">The model proposes pages; the server reads the price before a page can be watched</p>
+          </div>
+          <a class="btn btn--outline btn--sm" href="/live">Live check</a>
+        </div>
+        <div class="discover__body">
+          <form class="discover__form" id="discover-form">
+            <label class="sr-only" for="discover-query">Product name or page URL</label>
+            <div class="discover__row">
+              <input class="input" id="discover-query" name="query" type="text" maxlength="300"
+                autocomplete="off" placeholder="Cement M500 · 50 kg — or paste a page URL">
+              <button class="btn btn--primary" type="submit" id="discover-submit">Find pages</button>
+            </div>
+          </form>
+          <p class="discover__hint" id="discover-hint">Starts with the product where you lose the most — change it or paste a page URL. A pasted URL skips the model; every page is fetched and read before it can be watched, and a “likely” price is the first of several.</p>
+          <ul class="candidates" id="discover-results" aria-live="polite"></ul>
+        </div>
+      </section>
+
       <p class="note">Demo data · saved pages · no live scraping</p>
     </main>
   </div>

@@ -109,27 +109,6 @@
         <pre class="digest" id="daily-text" aria-live="polite">No digest yet. Run the daily check to fetch every page and write one.</pre>
       </section>
 
-      <section class="card discover" aria-labelledby="discover-title">
-        <div class="card-head">
-          <div>
-            <h2 id="discover-title">Find a competitor page</h2>
-            <p class="card-sub">The model proposes pages, the server reads them, you confirm</p>
-          </div>
-        </div>
-        <div class="discover__body">
-          <form class="discover__form" id="discover-form">
-            <label class="sr-only" for="discover-query">Product name or page URL</label>
-            <div class="discover__row">
-              <input class="input" id="discover-query" name="query" type="text" maxlength="300"
-                autocomplete="off" placeholder="A Light in the Attic — or paste a page URL">
-              <button class="btn btn--primary" type="submit" id="discover-submit">Find pages</button>
-            </div>
-          </form>
-          <p class="discover__hint" id="discover-hint">A product name asks the model for candidate pages; a pasted URL skips the model. Each page is fetched and read before it can be watched — a “likely” price is the first of several, so check it before adding.</p>
-          <ul class="candidates" id="discover-results" aria-live="polite"></ul>
-        </div>
-      </section>
-
       <section class="card live-how" aria-labelledby="how-title">
         <div class="card-head">
           <div>
@@ -156,10 +135,10 @@
             without a terminal.
           </li>
           <li>
-            <b>A new page is a profile.</b> The discovery step asks the model for candidate
-            pages, fetches each one on the server and drafts a parser profile only when it
-            can read a single price. Accepted pages live in <code>data/discovered.json</code>;
-            a demo reset forgets them.
+            <b>A new page is a profile.</b> The competitor search on the Competitors
+            screen asks the model for candidate pages; the server fetches each one and
+            drafts a parser profile only when it can read a single price. Accepted pages
+            live in <code>data/discovered.json</code>; a demo reset forgets them.
           </li>
           <li>
             <b>One source is real, one is local.</b>

@@ -19,6 +19,11 @@
     insights: el("#insights"),
     hint: el("#gap-hint"),
     tableWrap: el(".table-wrap"),
+    discoverForm: el("#discover-form"),
+    discoverQuery: el("#discover-query"),
+    discoverSubmit: el("#discover-submit"),
+    discoverResults: el("#discover-results"),
+    discoverHint: el("#discover-hint"),
   };
   if (!els.cards || !els.gapBody || !els.insights) return;
 
@@ -49,7 +54,7 @@
     info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.8v.2"/>',
   };
 
-  const state = { data: null, resizeTimer: 0 };
+  const state = { data: null, resizeTimer: 0, discoverBusy: false, candidates: [] };
 
   function stat(value, label, hint) {
     return `<li class="stat">
@@ -240,6 +245,9 @@
       renderCards();
       renderTable();
       renderInsights();
+      if (els.discoverQuery && !els.discoverQuery.value) {
+        els.discoverQuery.value = data.stats.biggestGapProduct || "";
+      }
     } catch (error) {
       els.cards.innerHTML =
         '<p class="comp-error">The analysis needs the demo server. Start it and reload this page.</p>';
@@ -247,6 +255,170 @@
       els.gapBody.innerHTML = "";
       els.insights.innerHTML = "";
     }
+  }
+
+
+  /* --- finding a competitor page ------------------------------------------ */
+
+  const STATUS_LABEL = {
+    ready: "Price found",
+    likely: "Likely price",
+    no_price: "No price",
+    no_title: "No title",
+    unreachable: "Unreachable",
+  };
+
+  function renderCandidates(candidates) {
+    state.candidates = candidates;
+    if (!candidates.length) {
+      els.discoverResults.innerHTML = "";
+      return;
+    }
+    els.discoverResults.innerHTML = candidates
+      .map((candidate, index) => {
+        const readable = candidate.status === "ready" || candidate.status === "likely";
+        const badge =
+          candidate.status === "ready"
+            ? `<span class="badge badge--solid">${fmt(candidate.price)} ${esc(
+                candidate.currency
+              )}</span>`
+            : `<span class="badge badge--outline">${esc(
+                STATUS_LABEL[candidate.status] || "Unreadable"
+              )}</span>`;
+        const body = readable
+          ? `<p class="candidate__price">${esc(candidate.raw)}</p>${
+              candidate.status === "likely"
+                ? `<p class="candidate__note">${esc(candidate.note)}</p>`
+                : ""
+            }`
+          : `<p class="candidate__note">${esc(
+              candidate.note || "This page could not be read safely."
+            )}</p>`;
+        const reason = candidate.reason
+          ? `<span class="candidate__why">${esc(candidate.reason)}</span>`
+          : "";
+        return `<li class="candidate">
+          <div class="candidate__head">
+            <div>
+              <p class="candidate__competitor">${esc(candidate.competitor)}</p>
+              <p class="candidate__title">${esc(
+                candidate.title || candidate.product || "Proposed page"
+              )}</p>
+            </div>
+            ${badge}
+          </div>
+          <p class="candidate__url"><a href="${esc(
+            candidate.url
+          )}" target="_blank" rel="noopener">${esc(candidate.url)}</a></p>
+          ${body}
+          <div class="candidate__foot">
+            <button class="btn btn--outline btn--sm" type="button"
+              data-add="${index}" data-ready="${readable}"${
+                readable ? "" : " disabled"
+              }>Add to watch list</button>
+            ${reason}
+          </div>
+        </li>`;
+      })
+      .join("");
+  }
+
+  function setDiscoverBusy(busy) {
+    state.discoverBusy = busy;
+    if (!els.discoverSubmit) return;
+    els.discoverSubmit.disabled = busy;
+    els.discoverQuery.disabled = busy;
+    els.discoverResults.querySelectorAll("button[data-add]").forEach((button) => {
+      button.disabled = busy || button.dataset.ready !== "true";
+    });
+  }
+
+  function discoverMessage(text) {
+    els.discoverResults.innerHTML = `<li class="candidate candidate--empty">${text}</li>`;
+  }
+
+  async function findPages(event) {
+    event.preventDefault();
+    if (state.discoverBusy) return;
+    const query = els.discoverQuery.value.trim();
+    if (!query) {
+      els.discoverQuery.focus();
+      return;
+    }
+    setDiscoverBusy(true);
+    discoverMessage("Checking pages…");
+    els.discoverHint.textContent =
+      "Fetching the proposed pages and reading their prices — this can take a few seconds.";
+    try {
+      const isUrl = /^https?:\/\//i.test(query);
+      const response = await fetch("/api/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isUrl ? { url: query } : { product: query }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error((data && data.detail) || "The page search did not finish.");
+      }
+      renderCandidates(data.candidates || []);
+      els.discoverHint.textContent = data.candidates.length
+        ? "Only a page whose price the server could read can be added. A “likely” price is the first of several — check the page before adding."
+        : "No usable page was found. Try another product name or paste a page URL.";
+    } catch (error) {
+      els.discoverResults.innerHTML = "";
+      discoverMessage(
+        esc(error && error.message ? error.message : "Could not search for pages.")
+      );
+    } finally {
+      setDiscoverBusy(false);
+    }
+  }
+
+  async function addCandidate(index) {
+    const candidate = state.candidates[index];
+    if (!candidate || state.discoverBusy) return;
+    setDiscoverBusy(true);
+    try {
+      const response = await fetch("/api/discover/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: candidate.url,
+          competitor: candidate.competitor,
+          product: candidate.product || candidate.title || "",
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) {
+        throw new Error((data && data.detail) || "The page could not be added.");
+      }
+      const reading = data.reading || {};
+      const result =
+        reading.status === "ok"
+          ? `first reading ${fmt(reading.price)} ${esc(reading.currency)}`
+          : "the first check failed — open the source card for the reason";
+      state.candidates = [];
+      els.discoverQuery.value = "";
+      discoverMessage(
+        `Added ${esc(data.source.competitor)} to the live watch list — ${result}. <a href="/live">See it on Live check →</a>`
+      );
+      els.discoverHint.textContent =
+        "The new page is watched on the Live check screen; the demo panels above still run on saved snapshots.";
+    } catch (error) {
+      discoverMessage(
+        esc(error && error.message ? error.message : "Could not add the page.")
+      );
+    } finally {
+      setDiscoverBusy(false);
+    }
+  }
+
+  if (els.discoverForm && els.discoverResults) {
+    els.discoverForm.addEventListener("submit", findPages);
+    els.discoverResults.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-add]");
+      if (button) addCandidate(Number(button.dataset.add));
+    });
   }
 
   window.addEventListener("resize", () => {

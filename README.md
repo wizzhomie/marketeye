@@ -66,9 +66,10 @@ what is missing is a daily, comparable, alerting view of it.
   stored reading per check, the last move against the previous check and the honest
   error when a page cannot be read. It watches a public scraping sandbox and a
   local competitor shop whose price changes between checks.
-- An **AI-assisted discovery** step on the Live check screen: the model proposes
-  candidate product pages, the server fetches each one and drafts a parser profile
-  only when it can read a single price; you confirm before the page is watched.
+- An **AI-assisted discovery** step on the Competitors screen: the model proposes
+  candidate competitor pages, the server fetches each one and drafts a parser
+  profile only when it can read a single price; you confirm before the page is
+  watched. It opens prefilled with the product where you lose the most.
 - A **daily check**: the same collection runs once a day in a background loop
   (`./daily.sh`), writes a plain-text digest to `data/digests/YYYY-MM-DD.txt` and
   shows it on the Live check screen, ready to copy, download or send to Telegram.
@@ -123,12 +124,13 @@ React or Tailwind.
    stores the readings and writes a plain-text digest; the card shows the last run,
    the automatic schedule and Copy / Download for the digest. With a bot connected,
    **Send to Telegram** delivers it to your chat.
-11. **Find a competitor page** (same screen): type a product name — the model
-    proposes a few product-page URLs, the server fetches each one and shows the
-    price it could read (or the honest reason it could not). A pasted page URL
-    skips the model. **Add to watch list** accepts only a page the server read
-    successfully; a "likely" price is the first of several and asks you to check
-    the page. **Reset live demo** forgets accepted pages.
+11. **Find a competitor page** (Competitors screen, bottom): the product where you
+    lose the most is prefilled; change it or paste a page URL. The model proposes
+    a few pages, the server fetches each one and shows the price it could read (or
+    the honest reason it could not). **Add to watch list** accepts only a page the
+    server read successfully; a "likely" price is the first of several and asks you
+    to check the page. **Reset live demo** on the Live check screen forgets
+    accepted pages.
 12. **Reset demo** brings the baseline back, so the demo can be shown again. On the
     live screen it also clears the readings, the saved digests and accepted pages.
 13. The panels state their limits honestly: demo data and saved pages for the
@@ -165,8 +167,9 @@ sends the latest digest from the console.
 ## AI competitor discovery (optional)
 
 Adding a real page is the fiddly part of this product, so the demo has a small
-honest helper: on Live check, type a product name and the model (the same Groq
-key as the buyer note) proposes up to three public product-page URLs. The model
+honest helper on the Competitors screen: pick a watched product (the weakest one
+is prefilled) or paste a page URL, and the model (the same Groq key as the buyer
+note) proposes up to three public product-page URLs. The model
 only suggests URLs; it never decides what a page says. The server fetches every
 candidate, looks for a single readable price element and drafts a parser profile
 (title selector, price selector, price pattern). A page that cannot be fetched,

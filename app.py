@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 
 import ai_note
 import alerts
+import analysis
 import collector
 import daily
 import demo_shop
@@ -48,6 +49,8 @@ PAGES = {
     "/product/": "product.html",
     "/alerts": "alerts.html",
     "/alerts/": "alerts.html",
+    "/competitors": "competitors.html",
+    "/competitors/": "competitors.html",
     "/live": "live.html",
     "/live/": "live.html",
 }
@@ -135,6 +138,20 @@ def demo_shop_page() -> Response:
 def api_bootstrap() -> dict:
     """Everything the panels need: products, competitors, 15 days, rules."""
     return _bootstrap()
+
+
+@app.get("/api/competitors")
+def api_competitors(snapshot: int | None = None) -> dict:
+    """Gap by competitor, price index and plain findings for one snapshot."""
+    connection = storage.connect()
+    try:
+        data = storage.bootstrap(connection)
+    finally:
+        connection.close()
+    try:
+        return analysis.evaluate(data, snapshot)
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/api/products")

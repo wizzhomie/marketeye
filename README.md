@@ -9,7 +9,8 @@ and when; a digest and alerts tell the buyer before a deal is lost to a cheaper
 competitor.
 
 > Status: **working demo on real HTTP.** The landing page, the Overview panel, the
-> product page, the Alerts screen and a live collector are built; FastAPI + SQLite
+> product page, the Competitors screen, the Alerts screen and a live collector are
+> built; FastAPI + SQLite
 > serve the data and evaluate the rules, and the optional AI buyer note is wired to
 > Groq. The live collector reads a public scraping sandbox and a local competitor
 > shop over HTTP, and a daily check runs that pass on a schedule and writes a
@@ -53,6 +54,10 @@ what is missing is a daily, comparable, alerting view of it.
 - A **product page** for any product in the watch list: two weeks of daily prices
   in a small line chart (hover a day to read it), the current competitor spread and
   the latest snapshots. It opens on the same day the Overview was showing.
+- A **Competitors** screen: one card per shop with its average price index against
+  you, a 14-day sparkline, the products it undercuts and the products it is
+  cheapest on; a gap-by-product table; and plain findings — the closest rival, the
+  biggest gap, the widest spread — computed on the server, not written by the model.
 - An **Alerts** screen: three rules with switches and editable thresholds, the
   alerts they trigger on the snapshot, and a one-message daily digest in plain text
   that can be copied or downloaded. Rules are evaluated and stored on the server;
@@ -101,29 +106,32 @@ React or Tailwind.
    `marketeye-history-YYYY-MM-DD.csv`.
 4. Click a product name or **Inspect listing** on an alert → **product page**:
    two weeks of history, the chart, the spread and the latest snapshots.
-5. **Collect now** simulates the daily collection on saved pages and appends the
+5. **Competitors** (sidebar): one card per shop — its average index against your
+   prices, a two-week trend and the products it undercuts; the table shows every
+   gap, and “What this means” names the closest rival and the biggest gap.
+6. **Collect now** simulates the daily collection on saved pages and appends the
    next snapshot: prices move, moves and alerts update.
-6. **Draft with AI** asks the model for a short buyer note based only on that
+7. **Draft with AI** asks the model for a short buyer note based only on that
    verified snapshot (optional — needs a Groq key).
-7. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
+8. **Alerts** (sidebar or “All alerts”): switch rules on and off, change the
    threshold and watch the list and the digest follow; copy the digest or download
    the `.txt`.
-8. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
+9. **Live check** (sidebar): **Collect now** fetches the watched pages over HTTP,
    stores a reading for each and shows the move against the previous check; the
    local competitor shop moves to its next price after every check.
-9. **Daily check** on the same screen: **Run daily check** fetches both pages,
+10. **Daily check** on the same screen: **Run daily check** fetches both pages,
    stores the readings and writes a plain-text digest; the card shows the last run,
    the automatic schedule and Copy / Download for the digest. With a bot connected,
    **Send to Telegram** delivers it to your chat.
-10. **Find a competitor page** (same screen): type a product name — the model
+11. **Find a competitor page** (same screen): type a product name — the model
     proposes a few product-page URLs, the server fetches each one and shows the
     price it could read (or the honest reason it could not). A pasted page URL
     skips the model. **Add to watch list** accepts only a page the server read
     successfully; a "likely" price is the first of several and asks you to check
     the page. **Reset live demo** forgets accepted pages.
-11. **Reset demo** brings the baseline back, so the demo can be shown again. On the
+12. **Reset demo** brings the baseline back, so the demo can be shown again. On the
     live screen it also clears the readings, the saved digests and accepted pages.
-12. The panels state their limits honestly: demo data and saved pages for the
+13. The panels state their limits honestly: demo data and saved pages for the
     panels; the live screen shows exactly which pages were fetched and when.
 
 ## AI buyer note (optional)
@@ -214,7 +222,9 @@ GET: `/api/export/history.csv` builds the flat table from SQLite, and the Overvi
 top bar is a plain download link to it. Discovery is two calls:
 `POST /api/discover` (model suggestion or a pasted URL) and
 `POST /api/discover/accept`, which re-fetches the page on the server before it
-writes a profile and a watched source.
+writes a profile and a watched source. The Competitors screen is one more GET,
+`/api/competitors`: it rebuilds the gaps, the index and the findings from the same
+SQLite history on every request.
 
 What is still missing is the risky, boring part: adapters for sites that block
 bots or change layouts, consent and robots handling, and real alert delivery
@@ -229,7 +239,7 @@ Python 3.12 + FastAPI + SQLite. The virtualenv is local and gitignored.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-./dev.sh start     # http://127.0.0.1:8767/ · /overview · /product?id=cement · /alerts · /live
+./dev.sh start     # http://127.0.0.1:8767/ · /overview · /product?id=cement · /competitors · /alerts · /live
 ./tunnel.sh start  # optional: publish inside the owner's private Tailscale network
 
 ./daily.sh run     # one daily check now: digest printed and saved
@@ -275,6 +285,9 @@ demo, and the host's other tailnet nodes are untouched.
 - FastAPI + SQLite backend implemented: the database is rebuilt from
   `static/demo.json` on start and served as `/api/bootstrap`; the panels load it
   over the API. The AI note stays server-side in `app.py`.
+- The Competitors screen is computed, not stored: `analysis.py` rebuilds the price
+  index, the per-product gaps, the 14-day trend and the plain findings from the
+  same SQLite history on every request, and the page only draws them.
 - Alert rules are evaluated and stored on the server (`alerts.py`); the browser only
   renders the result. Saved switches and thresholds survive a page reload and reset
   when the demo database is rebuilt on restart.
@@ -298,8 +311,9 @@ demo, and the host's other tailnet nodes are untouched.
   retries, no email channel. Without `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` the
   product works unchanged and the button stays off; the digest is still saved on
   disk and downloadable as a `.txt`.
-- Deterministic tests (78) cover the fixtures, the SQLite round trip, the rule
-  evaluation, the parser profiles (against a saved real page), the collector, the
+- Deterministic tests (90) cover the fixtures, the SQLite round trip, the rule
+  evaluation, the competitor analysis, the parser profiles (against a saved real
+  page), the collector, the
   daily check (digest text, saved files, schedule, an injected pass), the CSV
   export, Telegram delivery and page discovery (injected pages and model answers,
   never the network):
@@ -321,6 +335,7 @@ app.py            FastAPI app: pages, /api/bootstrap, product history, alerts,
                    live collection, daily digest, CSV export, AI note
 daily.py           the daily pass: collect, store, digest text/file, scheduler loop
 storage.py         SQLite schema, demo seeding, rules, live readings, queries
+analysis.py        competitor analysis: index, gaps, trend, findings (server-side)
 alerts.py          rule normalisation, matches, digest (server-side only)
 collector.py       HTTP fetch + parser profile, one reading per source
 page_parser.py     selector/price extraction; refuses to guess
@@ -332,11 +347,11 @@ parsers/           per-site parser profiles as data (profiles.json)
 live_sources.json  watched URLs with their parser profiles
 ai_note.py         optional Groq buyer note (server-side only)
 requirements.txt   pinned FastAPI + uvicorn
-templates/         landing, Overview, product, Alerts and Live check markup
+templates/         landing, Overview, product, Competitors, Alerts and Live check markup
 static/            UI theme, styles/logic for the panels, Inter, demo data
 static/demo.json   canonical demo fixtures (seeded into SQLite, offline fallback)
 docs/              demo script (demo-script.md) and screenshots (docs/screenshots/)
 telegram.py        optional Telegram delivery of the digest (server-side only)
-tests/             deterministic tests: fixtures, rules, parser, collector, daily,
-                   export, telegram, discovery
+tests/             deterministic tests: fixtures, rules, analysis, parser,
+                   collector, daily, export, telegram, discovery
 ```

@@ -1,0 +1,291 @@
+/* ==========================================================================
+   Market Eye — Competitors screen
+   Price index per competitor, 14-day sparkline, gaps by product and the
+   plain findings. Built on theme.css + the Overview shell.
+   ========================================================================== */
+
+/* --- summary tiles + cards ---------------------------------------------- */
+
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.comp-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 16px;
+}
+
+.comp-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.comp-card h2 {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.comp-card__index {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.comp-card__value {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.comp-card__vs {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.comp-card__spark {
+  min-height: 56px;
+}
+
+.comp-spark {
+  display: block;
+}
+
+.comp-spark__zero {
+  stroke: var(--hairline);
+  stroke-dasharray: 3 4;
+}
+
+.comp-spark__line {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.comp-spark__dot {
+  fill: var(--ink);
+}
+
+.comp-card__spark-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.comp-card__meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.comp-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.comp-card__row dt {
+  margin: 0;
+  color: var(--muted);
+}
+
+.comp-card__row dd {
+  margin: 0;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.comp-card__row .delta {
+  margin-left: 0;
+}
+
+.comp-error {
+  padding: 18px 20px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* --- gaps by product ----------------------------------------------------- */
+
+.competitors-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gap-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gap-table th,
+.gap-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  vertical-align: top;
+}
+
+.gap-table thead th {
+  padding-block: 9px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: linear-gradient(var(--canvas), var(--canvas));
+}
+
+.gap-table thead th.num,
+.gap-table td.num {
+  text-align: right;
+}
+
+.gap-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gap-table tbody th {
+  font-weight: 400;
+}
+
+.gap-table .num {
+  white-space: nowrap;
+}
+
+.gap-table__you {
+  font-weight: 600;
+}
+
+.gap-cell__price {
+  display: block;
+  font-weight: 500;
+}
+
+.gap-cell__gap {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  margin-top: 3px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.gap--below {
+  background: var(--primary-bg);
+  color: var(--primary-fg);
+}
+
+.gap--above {
+  border: 1px solid var(--hairline);
+}
+
+.gap--equal {
+  color: var(--muted);
+}
+
+.gap-table__spread {
+  color: var(--muted);
+}
+
+/* --- findings + method --------------------------------------------------- */
+
+.insights {
+  display: grid;
+}
+
+.insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 20px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.insight + .insight {
+  border-top: 1px solid var(--hairline);
+}
+
+.insight__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.insight--main .insight__icon,
+.insight--warn .insight__icon {
+  color: var(--ink);
+}
+
+.method {
+  display: grid;
+  gap: 10px;
+  padding: 14px 20px 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.method b {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+/* --- responsive ---------------------------------------------------------- */
+
+@media (max-width: 1150px) {
+  .comp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .comp-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .comp-card {
+    padding: 16px 14px 14px;
+  }
+
+  .gap-table th,
+  .gap-table td {
+    padding-inline: 12px;
+  }
+
+  .insight,
+  .method {
+    padding-inline: 14px;
+  }
+}
